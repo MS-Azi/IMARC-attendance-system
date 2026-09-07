@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Staff {
+  id           String   @id @default(cuid())
+  fullName     String
+  loginId      String   @unique // phone or email, used to sign in
+  passwordHash String
+  position     String   // job title / role, for reporting only
+  staffCode    String?  @unique
+  department   String?
+  dateJoined   DateTime @default(now())
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  attendances  Attendance[]
+}
+
+model Attendance {
+  id           String   @id @default(cuid())
+  staffId      String
+  staff        Staff    @relation(fields: [staffId], references: [id])
+  date         DateTime // calendar day this record belongs to (midnight UTC)
+  clockIn      DateTime?
+  clockInLat   Float?
+  clockInLng   Float?
+  clockOut     DateTime?
+  clockOutLat  Float?
+  clockOutLng  Float?
+  status       String   // ON_TIME | LATE | ABSENT | ANOMALY
+  note         String?  // set when admin manually overrides an entry
+  overridden   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([staffId, date])
+  @@index([date])
+}
+
+model Settings {
+  id                   Int    @id @default(1)
+  officeLat            Float
+  officeLng            Float
+  radiusMeters         Int    @default(100)
+  lateThreshold        String @default("08:21") // 24h HH:mm
+  reportEmail          String @default("imarcprojects1@gmail.com")
+}
+
+model MonthlyReport {
+  id          String   @id @default(cuid())
+  periodLabel String   // e.g. "2026-08"
+  generatedAt DateTime @default(now())
+  emailedTo   String
+  summaryJson String   // serialized summary stats, for re-download without recompute
+}
