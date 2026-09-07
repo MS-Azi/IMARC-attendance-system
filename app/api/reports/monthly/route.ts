@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     to: settings.reportEmail,
     subject: `iMarc Attendance — Monthly Report (${summary.periodLabel})`,
     html: summaryToHtml(summary),
-    attachmentBuffer: buffer as Buffer,
+    attachmentBuffer: buffer as unknown as Buffer,
     attachmentName: `attendance-report-${summary.periodLabel}.xlsx`,
   });
 
