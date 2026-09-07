@@ -36,38 +36,44 @@ export default function AdminLivePage() {
       <h1 className="font-display text-2xl italic mb-1 glow">Today</h1>
       <p className="text-muted text-sm mb-7">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
         <Stat label="Currently in" value={clockedIn.length} live />
         <Stat label="Total recorded" value={records.length} />
         <Stat label="Late today" value={late.length} tone="late" />
       </div>
 
-      <div className="glass rounded-card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted border-b border-border">
-              <th className="px-5 py-3 font-normal">Staff</th>
-              <th className="px-5 py-3 font-normal">Department</th>
-              <th className="px-5 py-3 font-normal">Clock In</th>
-              <th className="px-5 py-3 font-normal">Clock Out</th>
-              <th className="px-5 py-3 font-normal">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!loading && records.length === 0 && (
-              <tr><td colSpan={5} className="px-5 py-8 text-center text-muted">No attendance recorded yet today.</td></tr>
-            )}
-            {records.map((r) => (
-              <tr key={r.id} className="border-b border-border last:border-0">
-                <td className="px-5 py-3">{r.staff.fullName}</td>
-                <td className="px-5 py-3 text-muted">{r.staff.department || "—"}</td>
-                <td className="px-5 py-3">{fmt(r.clockIn)}</td>
-                <td className="px-5 py-3">{fmt(r.clockOut)}</td>
-                <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
+      <div className="relative">
+        <div className="glass rounded-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
+            <thead>
+              <tr className="text-left text-muted border-b border-border">
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Staff</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Department</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Clock In</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Clock Out</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {!loading && records.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-8 md:px-5 text-center text-muted">No attendance recorded yet today.</td></tr>
+              )}
+              {records.map((r) => (
+                <tr key={r.id} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{r.staff.department || "—"}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">{fmt(r.clockIn)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">{fmt(r.clockOut)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3"><StatusBadge status={r.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-card bg-gradient-to-l from-surface to-transparent md:hidden"
+        />
       </div>
     </div>
   );
@@ -75,7 +81,7 @@ export default function AdminLivePage() {
 
 function Stat({ label, value, tone, live }: { label: string; value: number; tone?: "late"; live?: boolean }) {
   return (
-    <div className="glass card-glow-hover rounded-card px-5 py-4">
+    <div className="glass card-glow-hover rounded-card px-4 py-3.5 md:px-5 md:py-4">
       <div className="flex items-center gap-2 mb-1">
         {live && <span className="live-dot" />}
         <span className="text-muted text-xs uppercase tracking-[0.12em]">{label}</span>

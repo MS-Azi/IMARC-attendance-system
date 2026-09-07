@@ -52,9 +52,9 @@ export default function SettingsPage() {
       <h1 className="font-display text-2xl italic mb-1 glow">Settings</h1>
       <p className="text-muted text-sm mb-7">Geofence, late threshold, and report delivery.</p>
 
-      <div className="glass rounded-card p-6 space-y-6">
+      <div className="glass rounded-card p-4 md:p-6 space-y-6">
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <label className="text-sm text-ink">Office location</label>
             <button
               onClick={useCurrentLocation}
@@ -64,7 +64,7 @@ export default function SettingsPage() {
               {locating ? "Locating…" : "Use my current location"}
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="number" step="any"
               value={s.officeLat}
@@ -110,7 +110,7 @@ export default function SettingsPage() {
             type="email"
             value={s.reportEmail}
             onChange={(e) => setS({ ...s, reportEmail: e.target.value })}
-            className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm w-72"
+            className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm w-full sm:w-72"
           />
         </div>
 
