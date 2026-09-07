@@ -33,11 +33,11 @@ export default function AdminLivePage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl italic mb-1">Today</h1>
+      <h1 className="font-display text-2xl italic mb-1 glow">Today</h1>
       <p className="text-muted text-sm mb-7">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <Stat label="Currently in" value={clockedIn.length} />
+        <Stat label="Currently in" value={clockedIn.length} live />
         <Stat label="Total recorded" value={records.length} />
         <Stat label="Late today" value={late.length} tone="late" />
       </div>
@@ -73,11 +73,20 @@ export default function AdminLivePage() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "late" }) {
+function Stat({ label, value, tone, live }: { label: string; value: number; tone?: "late"; live?: boolean }) {
   return (
-    <div className="glass rounded-card px-5 py-4">
-      <div className="text-muted text-xs mb-1">{label}</div>
-      <div className={`font-display text-3xl ${tone === "late" ? "text-late" : "text-ink"}`}>{value}</div>
+    <div className="glass card-glow-hover rounded-card px-5 py-4">
+      <div className="flex items-center gap-2 mb-1">
+        {live && <span className="live-dot" />}
+        <span className="text-muted text-xs uppercase tracking-[0.12em]">{label}</span>
+      </div>
+      <div
+        className={`font-display text-3xl ${
+          live ? "text-accent glow" : tone === "late" ? "text-late" : "text-ink"
+        }`}
+      >
+        {value}
+      </div>
     </div>
   );
 }

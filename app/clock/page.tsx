@@ -83,16 +83,19 @@ export default function ClockPage() {
       </button>
 
       <div className="text-center mb-10">
-        <div className="text-accent text-xs tracking-wide mb-2">iMarcProjects</div>
-        <div className="font-display text-2xl italic text-muted">
+        <div className="text-accent text-xs tracking-[0.2em] uppercase mb-3 glow">iMarcProjects</div>
+        <div className="font-display text-6xl text-ink glow tabular-nums tracking-tight">
           {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </div>
+        <div className="text-muted text-sm mt-2">
+          {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </div>
       </div>
 
-      <div className="glass rounded-card p-8 w-full max-w-sm text-center space-y-6">
+      <div className="glass card-glow-hover rounded-card p-8 w-full max-w-sm text-center space-y-6">
         <div>
-          <p className="text-sm text-muted">Today</p>
-          <p className="font-display text-xl mt-1">
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Today</p>
+          <p className="font-display text-xl mt-1.5">
             {hasClockedIn ? `In at ${fmtTime(record!.clockIn)}` : "Not clocked in"}
             {hasClockedOut ? ` · Out at ${fmtTime(record!.clockOut)}` : ""}
           </p>
@@ -105,7 +108,7 @@ export default function ClockPage() {
           <button
             onClick={() => act("IN")}
             disabled={busy}
-            className="focus-ring w-full rounded-md bg-accent hover:bg-accentDim transition-colors py-4 text-lg font-medium text-[#161207] disabled:opacity-60"
+            className="focus-ring glow-box w-full rounded-md bg-accent hover:bg-accentDim transition-colors py-4 text-lg font-semibold text-white disabled:opacity-60"
           >
             {busy ? "Locating…" : "Clock In"}
           </button>

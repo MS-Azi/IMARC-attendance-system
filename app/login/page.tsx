@@ -33,13 +33,13 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="text-accent text-xs tracking-wide mb-2">iMarcProjects</div>
-          <h1 className="font-display text-3xl italic">Attendance</h1>
+          <div className="text-accent text-xs tracking-[0.2em] uppercase mb-2 glow">iMarcProjects</div>
+          <h1 className="font-display text-3xl italic glow">Attendance</h1>
         </div>
 
         <form
           onSubmit={onSubmit}
-          className="glass rounded-card p-7 space-y-4"
+          className="glass card-glow-hover rounded-card p-7 space-y-4"
         >
           <div>
             <label className="block text-sm text-muted mb-1.5">Login ID</label>
@@ -70,7 +70,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="focus-ring w-full rounded-md bg-accent hover:bg-accentDim transition-colors text-base py-2.5 font-medium text-[#161207] disabled:opacity-60"
+            className="focus-ring glow-box w-full rounded-md bg-accent hover:bg-accentDim transition-colors text-base py-2.5 font-semibold text-white disabled:opacity-60"
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>

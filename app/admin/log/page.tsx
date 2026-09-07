@@ -39,12 +39,12 @@ export default function LogPage() {
     <div>
       <div className="flex items-end justify-between mb-7 gap-4">
         <div>
-          <h1 className="font-display text-2xl italic mb-1">Attendance Log</h1>
+          <h1 className="font-display text-2xl italic mb-1 glow">Attendance Log</h1>
           <p className="text-muted text-sm">{records.length} records</p>
         </div>
         <a
           href={exportUrl()}
-          className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-medium text-[#161207]"
+          className="focus-ring glow-box rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white"
         >
           Download Excel
         </a>

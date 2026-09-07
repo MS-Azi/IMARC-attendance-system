@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="font-display text-2xl italic mb-1">Settings</h1>
+      <h1 className="font-display text-2xl italic mb-1 glow">Settings</h1>
       <p className="text-muted text-sm mb-7">Geofence, late threshold, and report delivery.</p>
 
       <div className="glass rounded-card p-6 space-y-6">
@@ -118,7 +118,7 @@ export default function SettingsPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-medium text-[#161207] disabled:opacity-60"
+            className="focus-ring glow-box rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save settings"}
           </button>

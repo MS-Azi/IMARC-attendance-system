@@ -73,12 +73,12 @@ export default function StaffPage() {
     <div>
       <div className="flex items-center justify-between mb-7">
         <div>
-          <h1 className="font-display text-2xl italic mb-1">Staff</h1>
+          <h1 className="font-display text-2xl italic mb-1 glow">Staff</h1>
           <p className="text-muted text-sm">{staff.filter((s) => s.active).length} active</p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-medium text-[#161207]"
+          className="focus-ring glow-box rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white"
         >
           {showForm ? "Cancel" : "Add staff"}
         </button>
@@ -97,7 +97,7 @@ export default function StaffPage() {
             <button
               type="submit"
               disabled={saving}
-              className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-medium text-[#161207] disabled:opacity-60"
+              className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save staff member"}
             </button>

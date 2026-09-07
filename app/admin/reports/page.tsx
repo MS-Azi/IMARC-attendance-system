@@ -19,7 +19,7 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl italic mb-1">Monthly Reports</h1>
+      <h1 className="font-display text-2xl italic mb-1 glow">Monthly Reports</h1>
       <p className="text-muted text-sm mb-7">
         Generated automatically on the 1st of each month and emailed to the address set in Settings.
       </p>

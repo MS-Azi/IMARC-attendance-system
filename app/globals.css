@@ -7,21 +7,59 @@
 }
 
 body {
-  background: #0F1720;
+  background: #0A0A0C;
   background-image:
-    radial-gradient(1200px 600px at 15% -10%, rgba(200,155,92,0.08), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(92,146,112,0.05), transparent 55%);
-  color: #EDEFF2;
+    radial-gradient(1200px 600px at 15% -10%, rgba(232, 56, 79, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(232, 56, 79, 0.05), transparent 55%);
+  color: #F5F5F7;
 }
 
 .glass {
-  background: rgba(22, 31, 44, 0.72);
+  background: rgba(20, 20, 23, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Soft, restrained red glow — for headings and the single key element per screen. */
+.glow {
+  text-shadow:
+    0 0 18px rgba(232, 56, 79, 0.45),
+    0 0 44px rgba(232, 56, 79, 0.18);
+}
+
+.glow-box {
+  box-shadow:
+    0 0 0 1px rgba(232, 56, 79, 0.35),
+    0 0 24px rgba(232, 56, 79, 0.30),
+    0 0 64px rgba(232, 56, 79, 0.10);
+}
+
+/* Card chrome: neutral at rest, a whisper of red on hover. */
+.card-glow-hover {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-glow-hover:hover {
+  border-color: rgba(232, 56, 79, 0.45);
+  box-shadow: 0 0 28px rgba(232, 56, 79, 0.12);
+}
+
+/* Live status indicator. */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #E8384F;
+  box-shadow: 0 0 0 0 rgba(232, 56, 79, 0.55);
+  animation: live-pulse 2s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(232, 56, 79, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(232, 56, 79, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(232, 56, 79, 0); }
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid #C89B5C;
+  outline: 2px solid #E8384F;
   outline-offset: 2px;
 }

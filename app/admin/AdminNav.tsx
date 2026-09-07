@@ -24,7 +24,7 @@ export default function AdminNav() {
     <aside className="w-56 shrink-0 border-r border-border px-5 py-7 flex flex-col justify-between">
       <div>
         <div className="mb-8 px-1">
-          <div className="text-accent text-xs tracking-wide">iMarcProjects</div>
+          <div className="text-accent text-xs tracking-[0.2em] uppercase glow">iMarcProjects</div>
           <div className="font-display italic text-lg mt-0.5">Attendance</div>
         </div>
         <nav className="space-y-1">
@@ -35,7 +35,9 @@ export default function AdminNav() {
                 key={l.href}
                 href={l.href}
                 className={`block rounded-md px-3 py-2 text-sm transition-colors ${
-                  active ? "bg-surface2 text-ink border border-border" : "text-muted hover:text-ink"
+                  active
+                    ? "bg-surface2 text-ink ring-1 ring-inset ring-[rgba(232,56,79,0.4)]"
+                    : "text-muted hover:text-ink"
                 }`}
               >
                 {l.label}

@@ -5,17 +5,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#0F1720",
-        surface: "#161F2C",
-        surface2: "#1D2836",
-        border: "#2A3644",
-        accent: "#C89B5C",
-        accentDim: "#8A6F47",
-        ink: "#EDEFF2",
-        muted: "#8A93A3",
+        base: "#0A0A0C",
+        surface: "#141417",
+        surface2: "#1C1C21",
+        border: "#2A2A31",
+        accent: "#E8384F",
+        accentDim: "#C22539",
+        ink: "#F5F5F7",
+        muted: "#8A8A95",
         good: "#5C9270",
         late: "#C6924A",
-        bad: "#B0483E",
+        bad: "#C0564B",
       },
       fontFamily: {
         display: ["var(--font-display)", "serif"],
