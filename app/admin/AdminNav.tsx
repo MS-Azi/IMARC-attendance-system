@@ -35,7 +35,7 @@ export default function AdminNav() {
           <Link
             key={l.href}
             href={l.href}
-            className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+            className={`block rounded-md px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] transition-colors ${
               active
                 ? "bg-surface2 text-ink ring-1 ring-inset ring-[rgba(232,56,79,0.4)]"
                 : "text-muted hover:text-ink"
@@ -50,8 +50,8 @@ export default function AdminNav() {
 
   const wordmark = (
     <div>
-      <div className="text-accent text-[11px] tracking-[0.2em] uppercase glow">iMarcProjects</div>
-      <div className="font-display italic text-lg leading-tight mt-0.5">Attendance</div>
+      <div className="font-mono text-accent text-[11px] tracking-[0.24em] uppercase glow">iMarcProjects</div>
+      <div className="font-display font-bold uppercase tracking-tight text-lg leading-tight mt-0.5">Attendance</div>
     </div>
   );
 
@@ -63,7 +63,7 @@ export default function AdminNav() {
           <div className="mb-8 px-1">{wordmark}</div>
           {navLinks}
         </div>
-        <button onClick={logout} className="text-sm text-muted hover:text-ink text-left px-1">
+        <button onClick={logout} className="font-mono text-xs uppercase tracking-[0.12em] text-muted hover:text-ink text-left px-1">
           Sign out
         </button>
       </aside>
@@ -99,7 +99,7 @@ export default function AdminNav() {
             {navLinks}
             <button
               onClick={logout}
-              className="mt-2 block w-full text-left rounded-md px-3 py-2 text-sm text-muted hover:text-ink"
+              className="mt-2 block w-full text-left rounded-md px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] text-muted hover:text-ink"
             >
               Sign out
             </button>

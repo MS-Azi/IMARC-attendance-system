@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CornerBrackets from "@/app/_components/CornerBrackets";
 
 type Staff = {
   id: string;
@@ -73,19 +74,21 @@ export default function StaffPage() {
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-7">
         <div>
-          <h1 className="font-display text-2xl italic mb-1 glow">Staff</h1>
-          <p className="text-muted text-sm">{staff.filter((s) => s.active).length} active</p>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-tight mb-1 glow">Staff</h1>
+          <p className="font-mono text-muted text-[11px] uppercase tracking-[0.18em]">{staff.filter((s) => s.active).length} active</p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="focus-ring glow-box self-start sm:self-auto rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white"
+          className="focus-ring glow-box relative self-start sm:self-auto rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] font-medium text-white"
         >
+          <CornerBrackets />
           {showForm ? "Cancel" : "Add staff"}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={addStaff} className="glass rounded-card p-4 md:p-6 mb-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={addStaff} className="glass relative rounded-card p-4 md:p-6 mb-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <CornerBrackets />
           <Field label="Full name" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} required />
           <Field label="Login ID (phone or email)" value={form.loginId} onChange={(v) => setForm({ ...form, loginId: v })} required />
           <Field label="Password" type="password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} required />
@@ -97,11 +100,11 @@ export default function StaffPage() {
             <button
               type="submit"
               disabled={saving}
-              className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] font-medium text-white disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save staff member"}
             </button>
-            {error && <p className="text-bad text-sm">{error}</p>}
+            {error && <p className="font-mono text-bad text-xs">{error}</p>}
           </div>
         </form>
       )}
@@ -110,12 +113,12 @@ export default function StaffPage() {
         <div className="glass rounded-card overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
             <thead>
-              <tr className="text-left text-muted border-b border-border">
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Name</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Position</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Department</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Login ID</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Status</th>
+              <tr className="text-left border-b border-border">
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Name</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Position</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Department</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Login ID</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Status</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>
               </tr>
             </thead>
@@ -125,12 +128,12 @@ export default function StaffPage() {
                   <td className="px-3 py-2.5 md:px-5 md:py-3">{s.fullName}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{s.position}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{s.department || "—"}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{s.loginId}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-muted">{s.loginId}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">
-                    <span className={s.active ? "text-good" : "text-bad"}>{s.active ? "Active" : "Inactive"}</span>
+                    <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${s.active ? "text-good" : "text-bad"}`}>{s.active ? "Active" : "Inactive"}</span>
                   </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-right">
-                    <button onClick={() => toggleActive(s)} className="text-muted hover:text-ink text-xs">
+                    <button onClick={() => toggleActive(s)} className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted hover:text-ink">
                       {s.active ? "Deactivate" : "Reactivate"}
                     </button>
                   </td>
@@ -163,7 +166,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs text-muted mb-1.5">{label}</label>
+      <label className="block font-mono text-[11px] uppercase tracking-[0.13em] text-muted mb-1.5">{label}</label>
       <input
         type={type}
         value={value}

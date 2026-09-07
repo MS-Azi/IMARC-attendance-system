@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import CornerBrackets from "@/app/_components/CornerBrackets";
+import { useTilt } from "@/app/_components/useTilt";
 
 type Rec = {
   id: string;
@@ -33,8 +35,8 @@ export default function AdminLivePage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl italic mb-1 glow">Today</h1>
-      <p className="text-muted text-sm mb-7">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+      <h1 className="font-display text-2xl font-bold uppercase tracking-tight mb-1 glow">Today</h1>
+      <p className="font-mono text-muted text-[11px] uppercase tracking-[0.18em] mb-7">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
         <Stat label="Currently in" value={clockedIn.length} live />
@@ -46,12 +48,12 @@ export default function AdminLivePage() {
         <div className="glass rounded-card overflow-x-auto">
           <table className="w-full text-sm min-w-[560px]">
             <thead>
-              <tr className="text-left text-muted border-b border-border">
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Staff</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Department</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Clock In</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Clock Out</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal">Status</th>
+              <tr className="text-left border-b border-border">
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Staff</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Department</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock In</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock Out</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -62,8 +64,8 @@ export default function AdminLivePage() {
                 <tr key={r.id} className="border-b border-border last:border-0">
                   <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{r.staff.department || "—"}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">{fmt(r.clockIn)}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">{fmt(r.clockOut)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockIn)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockOut)}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3"><StatusBadge status={r.status} /></td>
                 </tr>
               ))}
@@ -80,14 +82,19 @@ export default function AdminLivePage() {
 }
 
 function Stat({ label, value, tone, live }: { label: string; value: number; tone?: "late"; live?: boolean }) {
+  const tilt = useTilt<HTMLDivElement>(5);
   return (
-    <div className="glass card-glow-hover rounded-card px-4 py-3.5 md:px-5 md:py-4">
+    <div
+      ref={tilt}
+      className="tilt glass card-glow-hover relative rounded-card px-4 py-3.5 md:px-5 md:py-4"
+    >
+      <CornerBrackets />
       <div className="flex items-center gap-2 mb-1">
         {live && <span className="live-dot" />}
-        <span className="text-muted text-xs uppercase tracking-[0.12em]">{label}</span>
+        <span className="font-mono text-muted text-[11px] uppercase tracking-[0.14em]">{label}</span>
       </div>
       <div
-        className={`font-display text-3xl ${
+        className={`font-mono text-3xl font-medium tabular-nums ${
           live ? "text-accent glow" : tone === "late" ? "text-late" : "text-ink"
         }`}
       >
@@ -104,7 +111,11 @@ function StatusBadge({ status }: { status: string }) {
     ABSENT: "text-bad",
     ANOMALY: "text-bad",
   };
-  return <span className={map[status] || "text-muted"}>{status.replace("_", " ")}</span>;
+  return (
+    <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${map[status] || "text-muted"}`}>
+      {status.replace("_", " ")}
+    </span>
+  );
 }
 
 function fmt(iso: string | null) {

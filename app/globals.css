@@ -7,10 +7,15 @@
 }
 
 body {
-  background: #0A0A0C;
+  background-color: #0A0A0C;
+  /* Blueprint grid: a fine white module grid with a fainter red major grid over it. */
   background-image:
-    radial-gradient(1200px 600px at 15% -10%, rgba(232, 56, 79, 0.10), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(232, 56, 79, 0.05), transparent 55%);
+    linear-gradient(rgba(245, 245, 247, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 245, 247, 0.028) 1px, transparent 1px),
+    linear-gradient(rgba(232, 56, 79, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 56, 79, 0.05) 1px, transparent 1px);
+  background-size: 34px 34px, 34px 34px, 170px 170px, 170px 170px;
+  background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
   color: #F5F5F7;
 }
 
@@ -62,4 +67,47 @@ body {
 .focus-ring:focus-visible {
   outline: 2px solid #E8384F;
   outline-offset: 2px;
+}
+
+/* Corner bracket accents — crop marks on a technical drawing.
+   Parent must be position:relative. Rendered via the CornerBrackets component. */
+.bracket {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 0 solid rgba(232, 56, 79, 0.6);
+  pointer-events: none;
+}
+.bracket-tl { top: 7px; left: 7px; border-top-width: 1px; border-left-width: 1px; }
+.bracket-tr { top: 7px; right: 7px; border-top-width: 1px; border-right-width: 1px; }
+.bracket-bl { bottom: 7px; left: 7px; border-bottom-width: 1px; border-left-width: 1px; }
+.bracket-br { bottom: 7px; right: 7px; border-bottom-width: 1px; border-right-width: 1px; }
+
+/* Pointer-driven tilt — applied by the useTilt hook, which no-ops on
+   touch-only devices and when prefers-reduced-motion is set. */
+.tilt {
+  transition: transform 0.25s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Staggered line-by-line reveal for a heading block, once on mount.
+   Wrap the heading group in .reveal; direct children animate in order. */
+.reveal > * {
+  opacity: 0;
+  animation: reveal-line 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.reveal > *:nth-child(1) { animation-delay: 60ms; }
+.reveal > *:nth-child(2) { animation-delay: 160ms; }
+.reveal > *:nth-child(3) { animation-delay: 260ms; }
+.reveal > *:nth-child(4) { animation-delay: 360ms; }
+@keyframes reveal-line {
+  from { opacity: 0; transform: translateY(0.5em); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt { transition: none; }
+  .reveal > * { opacity: 1; animation: none; }
+  .live-dot { animation: none; }
 }

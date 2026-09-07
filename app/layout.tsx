@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 
-const display = Fraunces({
+const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["500", "600"],
-  style: ["normal", "italic"],
+  weight: ["500", "700"],
   variable: "--font-display",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono",
 });
 const body = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -21,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={`${display.variable} ${mono.variable} ${body.variable}`}>
       <body className="font-body min-h-screen">{children}</body>
     </html>
   );

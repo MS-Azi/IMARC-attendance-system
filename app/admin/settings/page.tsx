@@ -45,21 +45,21 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2500);
   }
 
-  if (!s) return <p className="text-muted">Loading…</p>;
+  if (!s) return <p className="font-mono text-muted text-xs uppercase tracking-[0.15em]">Loading…</p>;
 
   return (
     <div className="max-w-xl">
-      <h1 className="font-display text-2xl italic mb-1 glow">Settings</h1>
-      <p className="text-muted text-sm mb-7">Geofence, late threshold, and report delivery.</p>
+      <h1 className="font-display text-2xl font-bold uppercase tracking-tight mb-1 glow">Settings</h1>
+      <p className="font-mono text-muted text-[11px] uppercase tracking-[0.18em] mb-7">Geofence, late threshold, and report delivery.</p>
 
       <div className="glass rounded-card p-4 md:p-6 space-y-6">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <label className="text-sm text-ink">Office location</label>
+            <label className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink">Office location</label>
             <button
               onClick={useCurrentLocation}
               disabled={locating}
-              className="text-xs text-accent hover:underline"
+              className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:underline"
             >
               {locating ? "Locating…" : "Use my current location"}
             </button>
@@ -80,11 +80,11 @@ export default function SettingsPage() {
               className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm"
             />
           </div>
-          <p className="text-xs text-muted mt-1.5">Set to your current location for testing — update to the permanent office coordinates before go-live.</p>
+          <p className="font-mono text-[11px] text-muted mt-2 leading-relaxed">Set to your current location for testing — update to the permanent office coordinates before go-live.</p>
         </div>
 
         <div>
-          <label className="block text-sm text-ink mb-2">Geofence radius (meters)</label>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.14em] text-ink mb-2">Geofence radius (meters)</label>
           <input
             type="number"
             value={s.radiusMeters}
@@ -94,18 +94,18 @@ export default function SettingsPage() {
         </div>
 
         <div>
-          <label className="block text-sm text-ink mb-2">Late threshold</label>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.14em] text-ink mb-2">Late threshold</label>
           <input
             type="time"
             value={s.lateThreshold}
             onChange={(e) => setS({ ...s, lateThreshold: e.target.value })}
             className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm w-40"
           />
-          <p className="text-xs text-muted mt-1.5">Clock-in at or after this time is marked Late.</p>
+          <p className="font-mono text-[11px] text-muted mt-2 leading-relaxed">Clock-in at or after this time is marked Late.</p>
         </div>
 
         <div>
-          <label className="block text-sm text-ink mb-2">Monthly report recipient</label>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.14em] text-ink mb-2">Monthly report recipient</label>
           <input
             type="email"
             value={s.reportEmail}
@@ -118,11 +118,11 @@ export default function SettingsPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="focus-ring glow-box rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="focus-ring glow-box rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] font-medium text-white disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save settings"}
           </button>
-          {saved && <span className="text-good text-sm">Saved.</span>}
+          {saved && <span className="font-mono text-good text-[11px] uppercase tracking-[0.12em]">Saved.</span>}
         </div>
       </div>
     </div>

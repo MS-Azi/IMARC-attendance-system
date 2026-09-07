@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import CornerBrackets from "@/app/_components/CornerBrackets";
+import { useTilt } from "@/app/_components/useTilt";
 
 type Record = {
   clockIn: string | null;
@@ -75,32 +77,42 @@ export default function ClockPage() {
 
   const hasClockedIn = !!record?.clockIn;
   const hasClockedOut = !!record?.clockOut;
+  const cardTilt = useTilt<HTMLDivElement>(4);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6">
-      <button onClick={logout} className="absolute top-6 right-6 text-sm text-muted hover:text-ink">
+      <button
+        onClick={logout}
+        className="absolute top-6 right-6 font-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-ink"
+      >
         Sign out
       </button>
 
-      <div className="text-center mb-10">
-        <div className="text-accent text-xs tracking-[0.2em] uppercase mb-3 glow">iMarcProjects</div>
-        <div className="font-display text-6xl text-ink glow tabular-nums tracking-tight">
+      <div className="reveal text-center mb-10">
+        <div className="font-mono text-accent text-[11px] tracking-[0.28em] uppercase mb-3 glow">
+          iMarcProjects
+        </div>
+        <div className="font-mono text-6xl font-medium text-ink glow tabular-nums tracking-tight">
           {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
         </div>
-        <div className="text-muted text-sm mt-2">
+        <div className="font-mono text-muted text-[11px] tracking-[0.18em] uppercase mt-3">
           {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </div>
       </div>
 
-      <div className="glass card-glow-hover rounded-card p-8 w-full max-w-sm text-center space-y-6">
+      <div
+        ref={cardTilt}
+        className="tilt glass card-glow-hover relative rounded-card p-8 w-full max-w-sm text-center space-y-6"
+      >
+        <CornerBrackets />
         <div>
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Today</p>
-          <p className="font-display text-xl mt-1.5">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">Today</p>
+          <p className="font-mono text-lg mt-2 tracking-tight">
             {hasClockedIn ? `In at ${fmtTime(record!.clockIn)}` : "Not clocked in"}
             {hasClockedOut ? ` · Out at ${fmtTime(record!.clockOut)}` : ""}
           </p>
           {record?.status === "LATE" && (
-            <p className="text-late text-sm mt-1">Marked late</p>
+            <p className="font-mono text-late text-[11px] uppercase tracking-[0.15em] mt-1.5">Marked late</p>
           )}
         </div>
 
@@ -108,8 +120,9 @@ export default function ClockPage() {
           <button
             onClick={() => act("IN")}
             disabled={busy}
-            className="focus-ring glow-box w-full rounded-md bg-accent hover:bg-accentDim transition-colors py-4 text-lg font-semibold text-white disabled:opacity-60"
+            className="focus-ring glow-box relative w-full rounded-md bg-accent hover:bg-accentDim transition-colors py-4 font-mono text-sm uppercase tracking-[0.2em] font-medium text-white disabled:opacity-60"
           >
+            <CornerBrackets />
             {busy ? "Locating…" : "Clock In"}
           </button>
         )}
@@ -117,17 +130,18 @@ export default function ClockPage() {
           <button
             onClick={() => act("OUT")}
             disabled={busy}
-            className="focus-ring w-full rounded-md bg-surface2 border border-border hover:border-accent transition-colors py-4 text-lg font-medium disabled:opacity-60"
+            className="focus-ring relative w-full rounded-md bg-surface2 border border-border hover:border-accent transition-colors py-4 font-mono text-sm uppercase tracking-[0.2em] font-medium disabled:opacity-60"
           >
+            <CornerBrackets />
             {busy ? "Locating…" : "Clock Out"}
           </button>
         )}
         {hasClockedIn && hasClockedOut && (
-          <p className="text-good">Done for the day.</p>
+          <p className="font-mono text-good text-sm uppercase tracking-[0.12em]">Done for the day.</p>
         )}
 
         {message && (
-          <p className={message.kind === "ok" ? "text-good text-sm" : "text-bad text-sm"}>
+          <p className={message.kind === "ok" ? "font-mono text-good text-xs" : "font-mono text-bad text-xs"}>
             {message.text}
           </p>
         )}
