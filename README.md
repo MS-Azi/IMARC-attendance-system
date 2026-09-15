@@ -6,13 +6,13 @@ Admin gets a live dashboard, an editable attendance log, on-demand Excel export,
 an automatic monthly report emailed to imarcprojects1@gmail.com.
 
 Built per the PRD: single-phase build, one office location, browser GPS, manual staff
-entry, Next.js + Postgres, hosted on Render.
+entry, Next.js + Postgres (Supabase), hosted on Render.
 
 ## Local setup
 
 ```bash
 npm install
-cp .env.example .env      # fill in DATABASE_URL at minimum to run locally
+cp .env.example .env      # fill in DATABASE_URL and DIRECT_URL at minimum to run locally
 npx prisma db push        # creates tables from prisma/schema.prisma
 npx prisma db seed        # creates the first admin login
 npm run dev
@@ -25,20 +25,34 @@ record directly for now — see "Next steps" below if you want a self-service pa
 Add staff from **Admin → Staff → Add staff**. They sign in at `/login` with the
 login ID and password you set for them, and land on `/clock`.
 
-## Deploying to Render
+## Deploying to Render + Supabase
+
+The app runs as a Render Web Service; Postgres is hosted on Supabase (not Render's
+own Postgres — its free tier is hard-deleted after 30 days, while a Supabase free
+project only pauses after a week of inactivity and can be resumed from the dashboard
+or an API ping).
 
 1. **Push this project to a GitHub repo.**
 
-2. **Create a Postgres instance** in Render (Dashboard → New → PostgreSQL). Copy the
-   "Internal Database URL" it gives you.
+2. **Create a Supabase project** at [supabase.com](https://supabase.com) (free tier).
+   Save the database password you set — Supabase only shows it once.
 
-3. **Create a Web Service** in Render, pointing at the repo.
+3. **Get two connection strings** from Project Settings → Database → Connection
+   string:
+   - **Transaction pooler** (port 6543) → this is `DATABASE_URL`. Append
+     `?pgbouncer=true`.
+   - **Session pooler** (same pooler host, port 5432) → this is `DIRECT_URL`, used
+     only for schema pushes. Don't use the `db.<ref>.supabase.co` direct host —
+     it's IPv6-only unless you've bought the IPv4 add-on, and most networks (and
+     Render's build environment) can't reach it.
+
+4. **Create a Web Service** in Render, pointing at the repo.
    - Build command: `npm install && npm run build`
    - Start command: `npm start`
    - Environment: Node
 
-4. **Set environment variables** on the Web Service (Render → Environment):
-   - `DATABASE_URL` — the Postgres Internal Database URL from step 2
+5. **Set environment variables** on the Web Service (Render → Environment):
+   - `DATABASE_URL`, `DIRECT_URL` — the two Supabase connection strings from step 3
    - `AUTH_SECRET` — any long random string
    - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — for
      imarcprojects1@gmail.com, use a Gmail **app password**, not the normal
@@ -46,19 +60,19 @@ login ID and password you set for them, and land on `/clock`.
    - `CRON_SECRET` — any long random string, must match the cron job below
    - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` — only needed for the one-time seed
 
-5. **Run the first migration + seed.** After the first deploy, open the Web
+6. **Run the first migration + seed.** After the first deploy, open the Web
    Service's Shell tab in Render and run:
    ```bash
    npx prisma db push
    npx prisma db seed
    ```
 
-6. **Set the office location and late threshold.** Sign in as admin, go to
+7. **Set the office location and late threshold.** Sign in as admin, go to
    Settings, click "Use my current location" while on-site (or standing wherever
    you're testing from), set the radius, and confirm the late threshold (defaults
    to 08:21, per the PRD).
 
-7. **Create the monthly report Cron Job.** Render Dashboard → New → Cron Job:
+8. **Create the monthly report Cron Job.** Render Dashboard → New → Cron Job:
    - Command: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<your-app>.onrender.com/api/reports/monthly`
    - Schedule: `0 6 1 * *` (6am on the 1st of every month — adjust timezone as needed)
    - Environment variable: `CRON_SECRET` set to the same value as on the Web Service
