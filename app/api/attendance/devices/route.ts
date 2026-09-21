@@ -14,7 +14,9 @@ export async function GET() {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Admin only." }, { status: 401 });
 
   const flagged = await prisma.attendance.findMany({
-    where: { deviceStatus: { in: ["MISMATCH", "UNVERIFIED"] } },
+    where: {
+      OR: [{ deviceStatus: { in: ["MISMATCH", "UNVERIFIED"] } }, { clockOutDeviceStatus: "MISMATCH" }],
+    },
     include: { staff: true },
     orderBy: { date: "desc" },
   });
@@ -26,9 +28,18 @@ export async function GET() {
     }
   }
 
-  const records = flagged.filter(
-    (r) => r.deviceStatus === "MISMATCH" || (unverifiedCounts.get(r.staffId) || 0) > 1
-  );
+  const records = flagged
+    .filter((r) => {
+      const inFlagged = r.deviceStatus === "MISMATCH" || (unverifiedCounts.get(r.staffId) || 0) > 1;
+      const outFlagged = r.clockOutDeviceStatus === "MISMATCH";
+      return inFlagged || outFlagged;
+    })
+    .map((r) => {
+      const flaggedActions: ("IN" | "OUT")[] = [];
+      if (r.deviceStatus === "MISMATCH" || (unverifiedCounts.get(r.staffId) || 0) > 1) flaggedActions.push("IN");
+      if (r.clockOutDeviceStatus === "MISMATCH") flaggedActions.push("OUT");
+      return { ...r, flaggedActions };
+    });
 
   return NextResponse.json({ records });
 }

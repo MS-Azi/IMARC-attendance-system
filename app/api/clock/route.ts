@@ -73,9 +73,16 @@ export async function POST(req: NextRequest) {
     if (existing.clockOut) {
       return NextResponse.json({ error: "You already clocked out today." }, { status: 409 });
     }
+    const device = await resolveDeviceStatus(session.sub, deviceId);
     const record = await prisma.attendance.update({
       where: { staffId_date: { staffId: session.sub, date: today } },
-      data: { clockOut: now, clockOutLat: lat, clockOutLng: lng },
+      data: {
+        clockOut: now,
+        clockOutLat: lat,
+        clockOutLng: lng,
+        clockOutDeviceId: device.deviceId,
+        clockOutDeviceStatus: device.deviceStatus,
+      },
     });
     return NextResponse.json({ ok: true, record });
   }

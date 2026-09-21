@@ -47,8 +47,10 @@ model Attendance {
   overridden   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  deviceId     String?
-  deviceStatus DeviceStatus @default(MATCHED)
+  deviceId             String?
+  deviceStatus         DeviceStatus  @default(MATCHED)
+  clockOutDeviceId     String?
+  clockOutDeviceStatus DeviceStatus?
 
   @@unique([staffId, date])
   @@index([date])

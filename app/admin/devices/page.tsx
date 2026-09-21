@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+type DeviceStatus = "MATCHED" | "UNVERIFIED" | "MISMATCH";
+
 type Rec = {
   id: string;
   date: string;
   clockIn: string | null;
+  clockOut: string | null;
   deviceId: string | null;
-  deviceStatus: "MATCHED" | "UNVERIFIED" | "MISMATCH";
+  deviceStatus: DeviceStatus;
+  clockOutDeviceId: string | null;
+  clockOutDeviceStatus: DeviceStatus | null;
+  flaggedActions: ("IN" | "OUT")[];
   staff: { fullName: string; department: string | null };
 };
 
@@ -51,21 +57,28 @@ export default function DevicesPage() {
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Date</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Staff</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock In</th>
-                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Device</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock Out</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Flagged</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>
               </tr>
             </thead>
             <tbody>
               {!loading && records.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-8 md:px-5 text-center text-muted">Nothing flagged for review.</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 md:px-5 text-center text-muted">Nothing flagged for review.</td></tr>
               )}
               {records.map((r) => (
                 <tr key={r.id} className="border-b border-border last:border-0">
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{new Date(r.date).toLocaleDateString()}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockIn)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockOut)}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">
-                    <DeviceBadge status={r.deviceStatus} />
+                    <div className="flex flex-col gap-1">
+                      {r.flaggedActions.includes("IN") && <DeviceBadge action="IN" status={r.deviceStatus} />}
+                      {r.flaggedActions.includes("OUT") && r.clockOutDeviceStatus && (
+                        <DeviceBadge action="OUT" status={r.clockOutDeviceStatus} />
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-right">
                     <button
@@ -90,7 +103,7 @@ export default function DevicesPage() {
   );
 }
 
-function DeviceBadge({ status }: { status: Rec["deviceStatus"] }) {
+function DeviceBadge({ action, status }: { action: "IN" | "OUT"; status: DeviceStatus }) {
   const map: Record<string, string> = {
     MISMATCH: "text-bad",
     UNVERIFIED: "text-late",
@@ -98,7 +111,7 @@ function DeviceBadge({ status }: { status: Rec["deviceStatus"] }) {
   };
   return (
     <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${map[status] || "text-muted"}`}>
-      {status}
+      {action}: {status}
     </span>
   );
 }
