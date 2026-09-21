@@ -33,9 +33,13 @@ export default function DevicesPage() {
     setLoading(false);
   }
 
-  async function approve(id: string) {
+  async function approve(id: string, action?: "IN" | "OUT") {
     setBusyId(id);
-    await fetch(`/api/attendance/${id}/approve-device`, { method: "POST" });
+    await fetch(`/api/attendance/${id}/approve-device`, {
+      method: "POST",
+      headers: action ? { "Content-Type": "application/json" } : undefined,
+      body: action ? JSON.stringify({ action }) : undefined,
+    });
     await load();
     setBusyId(null);
   }
@@ -66,31 +70,56 @@ export default function DevicesPage() {
               {!loading && records.length === 0 && (
                 <tr><td colSpan={6} className="px-3 py-8 md:px-5 text-center text-muted">Nothing flagged for review.</td></tr>
               )}
-              {records.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0">
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{new Date(r.date).toLocaleDateString()}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockIn)}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockOut)}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">
-                    <div className="flex flex-col gap-1">
-                      {r.flaggedActions.includes("IN") && <DeviceBadge action="IN" status={r.deviceStatus} />}
-                      {r.flaggedActions.includes("OUT") && r.clockOutDeviceStatus && (
-                        <DeviceBadge action="OUT" status={r.clockOutDeviceStatus} />
+              {records.map((r) => {
+                const bothFlaggedDifferently =
+                  r.flaggedActions.includes("IN") &&
+                  r.flaggedActions.includes("OUT") &&
+                  r.deviceId !== r.clockOutDeviceId;
+                return (
+                  <tr key={r.id} className="border-b border-border last:border-0">
+                    <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{new Date(r.date).toLocaleDateString()}</td>
+                    <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
+                    <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockIn)}</td>
+                    <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockOut)}</td>
+                    <td className="px-3 py-2.5 md:px-5 md:py-3">
+                      <div className="flex flex-col gap-1">
+                        {r.flaggedActions.includes("IN") && <DeviceBadge action="IN" status={r.deviceStatus} />}
+                        {r.flaggedActions.includes("OUT") && r.clockOutDeviceStatus && (
+                          <DeviceBadge action="OUT" status={r.clockOutDeviceStatus} />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 md:px-5 md:py-3 text-right space-x-3 whitespace-nowrap">
+                      {bothFlaggedDifferently ? (
+                        <>
+                          <button
+                            onClick={() => approve(r.id, "IN")}
+                            disabled={busyId === r.id}
+                            className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:text-accentDim disabled:opacity-60"
+                          >
+                            Approve IN
+                          </button>
+                          <button
+                            onClick={() => approve(r.id, "OUT")}
+                            disabled={busyId === r.id}
+                            className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:text-accentDim disabled:opacity-60"
+                          >
+                            Approve OUT
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => approve(r.id)}
+                          disabled={busyId === r.id}
+                          className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:text-accentDim disabled:opacity-60"
+                        >
+                          {busyId === r.id ? "Approving…" : "Approve device"}
+                        </button>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 text-right">
-                    <button
-                      onClick={() => approve(r.id)}
-                      disabled={busyId === r.id}
-                      className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:text-accentDim disabled:opacity-60"
-                    >
-                      {busyId === r.id ? "Approving…" : "Approve device"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
