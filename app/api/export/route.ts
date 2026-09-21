@@ -32,6 +32,8 @@ export async function GET(req: NextRequest) {
     clockIn: r.clockIn ? new Date(r.clockIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-",
     clockOut: r.clockOut ? new Date(r.clockOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-",
     status: r.status,
+    inFlagged: r.deviceStatus === "MISMATCH",
+    outFlagged: r.clockOutDeviceStatus === "MISMATCH",
   }));
 
   const buffer = await buildAttendanceWorkbook(rows, "Attendance");

@@ -8,7 +8,12 @@ export type AttendanceRow = {
   clockIn: string;
   clockOut: string;
   status: string;
+  inFlagged?: boolean;
+  outFlagged?: boolean;
 };
+
+// Matches the app's "bad" red (used for flagged/error states in the live UI).
+const FLAG_COLOR = "FFC0564B";
 
 export async function buildAttendanceWorkbook(rows: AttendanceRow[], title: string) {
   const wb = new ExcelJS.Workbook();
@@ -20,8 +25,8 @@ export async function buildAttendanceWorkbook(rows: AttendanceRow[], title: stri
     { header: "Position", key: "position", width: 20 },
     { header: "Department", key: "department", width: 18 },
     { header: "Date", key: "date", width: 14 },
-    { header: "Clock In", key: "clockIn", width: 12 },
-    { header: "Clock Out", key: "clockOut", width: 12 },
+    { header: "Clock In", key: "clockIn", width: 16 },
+    { header: "Clock Out", key: "clockOut", width: 16 },
     { header: "Status", key: "status", width: 12 },
   ];
 
@@ -32,7 +37,19 @@ export async function buildAttendanceWorkbook(rows: AttendanceRow[], title: stri
     fgColor: { argb: "FF1B2A41" },
   };
 
-  rows.forEach((r) => sheet.addRow(r));
+  rows.forEach((r) => {
+    const row = sheet.addRow({
+      staffName: r.staffName,
+      position: r.position,
+      department: r.department,
+      date: r.date,
+      clockIn: r.inFlagged ? `⚠ ${r.clockIn}` : r.clockIn,
+      clockOut: r.outFlagged ? `⚠ ${r.clockOut}` : r.clockOut,
+      status: r.status,
+    });
+    if (r.inFlagged) row.getCell("clockIn").font = { color: { argb: FLAG_COLOR }, bold: true };
+    if (r.outFlagged) row.getCell("clockOut").font = { color: { argb: FLAG_COLOR }, bold: true };
+  });
 
   const statusColors: Record<string, string> = {
     LATE: "FFF4E3C8",

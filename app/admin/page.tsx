@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import CornerBrackets from "@/app/_components/CornerBrackets";
 import { useTilt } from "@/app/_components/useTilt";
+import DeviceFlagTime from "@/app/_components/DeviceFlagTime";
 
 type Rec = {
   id: string;
   clockIn: string | null;
   clockOut: string | null;
   status: string;
+  deviceStatus: string;
+  clockOutDeviceStatus: string | null;
   staff: { fullName: string; department: string | null };
 };
 
@@ -64,8 +67,12 @@ export default function AdminLivePage() {
                 <tr key={r.id} className="border-b border-border last:border-0">
                   <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{r.staff.department || "—"}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockIn)}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockOut)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">
+                    <DeviceFlagTime time={r.clockIn} flagged={r.deviceStatus === "MISMATCH"} />
+                  </td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">
+                    <DeviceFlagTime time={r.clockOut} flagged={r.clockOutDeviceStatus === "MISMATCH"} />
+                  </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3"><StatusBadge status={r.status} /></td>
                 </tr>
               ))}
@@ -116,9 +123,4 @@ function StatusBadge({ status }: { status: string }) {
       {status.replace("_", " ")}
     </span>
   );
-}
-
-function fmt(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }

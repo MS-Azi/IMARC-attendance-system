@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DeviceFlagTime from "@/app/_components/DeviceFlagTime";
 
 type Rec = {
   id: string;
@@ -9,6 +10,8 @@ type Rec = {
   clockOut: string | null;
   status: string;
   overridden: boolean;
+  deviceStatus: string;
+  clockOutDeviceStatus: string | null;
   staff: { fullName: string; department: string | null };
 };
 
@@ -87,8 +90,12 @@ export default function LogPage() {
                 <tr key={r.id} className="border-b border-border last:border-0">
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{new Date(r.date).toLocaleDateString()}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockIn)}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{fmt(r.clockOut)}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">
+                    <DeviceFlagTime time={r.clockIn} flagged={r.deviceStatus === "MISMATCH"} />
+                  </td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">
+                    <DeviceFlagTime time={r.clockOut} flagged={r.clockOutDeviceStatus === "MISMATCH"} />
+                  </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">
                     <StatusBadge status={r.status} />
                     {r.overridden && <span className="font-mono text-muted text-[10px] uppercase tracking-[0.1em] ml-2">(edited)</span>}
@@ -124,10 +131,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function fmt(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
