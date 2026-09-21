@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CornerBrackets from "@/app/_components/CornerBrackets";
 import { useTilt } from "@/app/_components/useTilt";
+import { getDeviceId } from "@/lib/deviceId";
 
 type Record = {
   clockIn: string | null;
@@ -48,6 +49,7 @@ export default function ClockPage() {
             action,
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
+            deviceId: getDeviceId(),
           }),
         });
         const data = await res.json();

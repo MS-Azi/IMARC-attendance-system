@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { isWithinRadius } from "@/lib/geo";
-import { getSettings, dayKey, statusForClockIn } from "@/lib/attendance";
+import { getSettings, dayKey, statusForClockIn, resolveDeviceStatus } from "@/lib/attendance";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sign in as a staff member first." }, { status: 401 });
   }
 
-  const { action, lat, lng } = await req.json();
+  const { action, lat, lng, deviceId } = await req.json();
   if (typeof lat !== "number" || typeof lng !== "number") {
     return NextResponse.json(
       { error: "Location was not captured. Enable location access and try again." },
@@ -38,10 +38,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "You already clocked in today." }, { status: 409 });
     }
     const status = statusForClockIn(now, settings.lateThreshold);
+    const device = await resolveDeviceStatus(session.sub, deviceId);
     const record = await prisma.attendance.upsert({
       where: { staffId_date: { staffId: session.sub, date: today } },
-      create: { staffId: session.sub, date: today, clockIn: now, clockInLat: lat, clockInLng: lng, status },
-      update: { clockIn: now, clockInLat: lat, clockInLng: lng, status },
+      create: {
+        staffId: session.sub,
+        date: today,
+        clockIn: now,
+        clockInLat: lat,
+        clockInLng: lng,
+        status,
+        deviceId: device.deviceId,
+        deviceStatus: device.deviceStatus,
+      },
+      update: {
+        clockIn: now,
+        clockInLat: lat,
+        clockInLng: lng,
+        status,
+        deviceId: device.deviceId,
+        deviceStatus: device.deviceStatus,
+      },
     });
     return NextResponse.json({ ok: true, record });
   }
