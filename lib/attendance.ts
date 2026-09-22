@@ -17,8 +17,26 @@ export async function getSettings() {
   return settings;
 }
 
+// The office (and lateThreshold, entered by the admin on their own local clock) is
+// Africa/Lagos. clockIn is an absolute UTC instant, so it must be converted to Lagos
+// wall-clock time before comparing — comparing raw UTC hours against the threshold
+// silently shifts the effective cutoff by the UTC+1 offset.
+const OFFICE_TIMEZONE = "Africa/Lagos";
+
+function minutesSinceMidnightInTimeZone(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
+}
+
 export function statusForClockIn(clockIn: Date, lateThreshold: string): "ON_TIME" | "LATE" {
-  const minutesSinceMidnight = clockIn.getUTCHours() * 60 + clockIn.getUTCMinutes();
+  const minutesSinceMidnight = minutesSinceMidnightInTimeZone(clockIn, OFFICE_TIMEZONE);
   return minutesSinceMidnight >= parseHHMM(lateThreshold) ? "LATE" : "ON_TIME";
 }
 
