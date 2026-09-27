@@ -8,6 +8,13 @@ import { writeAuditLog } from "@/lib/audit";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Finalized months are read-only at the API level, not just hidden in the UI. */
+async function assertMonthNotFinalized(date: Date) {
+  const monthStr = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  const pm = await prisma.payrollMonth.findUnique({ where: { month: monthStr } });
+  if (pm?.finalizedAt) throw new Error(`${monthStr} is finalized and can no longer be changed.`);
+}
+
 export async function getReviewBoardForDate(date: Date) {
   const staffList = await prisma.staff.findMany({ where: { active: true }, orderBy: { fullName: "asc" } });
   const dayKey = lagosDateKey(date);
@@ -94,6 +101,7 @@ export async function reviewSlot(
 ) {
   const record = await prisma.slotRecord.findUnique({ where: { id: slotRecordId } });
   if (!record) throw new Error("Slot record not found.");
+  await assertMonthNotFinalized(record.date);
   if (action === "EXCUSE" && !reason?.trim()) throw new Error("A reason is required to excuse a slot.");
 
   const before = { reviewStatus: record.reviewStatus, reviewReason: record.reviewReason };
@@ -126,6 +134,8 @@ export async function bulkExcuseRange(staffId: string, from: Date, to: Date, rea
   const fromKey = lagosDateKey(from);
   const toKey = lagosDateKey(to);
   if (fromKey > toKey) throw new Error("'From' date must be on or before 'to' date.");
+  await assertMonthNotFinalized(fromKey);
+  await assertMonthNotFinalized(toKey);
 
   const touchedDays: string[] = [];
   for (let d = fromKey; d <= toKey; d = new Date(d.getTime() + DAY_MS)) {
@@ -153,6 +163,9 @@ export async function bulkExcuseRange(staffId: string, from: Date, to: Date, rea
 
 export async function excuseAttendanceLate(attendanceId: string, reason: string, adminId: string) {
   if (!reason?.trim()) throw new Error("A reason is required.");
+  const attendance = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+  if (!attendance) throw new Error("Attendance record not found.");
+  await assertMonthNotFinalized(attendance.date);
   const existing = await prisma.attendanceOffenceReview.findUnique({ where: { attendanceRecordId: attendanceId } });
   if (existing) return existing;
 
@@ -174,6 +187,8 @@ export async function excuseAttendanceLate(attendanceId: string, reason: string,
 }
 
 export async function undoAttendanceExcuse(attendanceId: string, adminId: string) {
+  const attendance = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+  if (attendance) await assertMonthNotFinalized(attendance.date);
   const existing = await prisma.attendanceOffenceReview.findUnique({ where: { attendanceRecordId: attendanceId } });
   if (!existing) return null;
 

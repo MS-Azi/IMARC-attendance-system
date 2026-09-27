@@ -14,6 +14,7 @@ const links = [
   ...(process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true"
     ? [
         { href: "/admin/worklog", label: "Daily Review" },
+        { href: "/admin/worklog/payroll", label: "Worklog Payroll" },
         { href: "/admin/worklog/rules", label: "Worklog Rules" },
         { href: "/admin/worklog/log", label: "Worklog Change Log" },
       ]

@@ -4,6 +4,8 @@ import { buildMonthlySummary, summaryToHtml } from "@/lib/report";
 import { buildAttendanceWorkbook, AttendanceRow } from "@/lib/excel";
 import { sendReportEmail } from "@/lib/mailer";
 import { getSettings } from "@/lib/attendance";
+import { isWorklogEnabled } from "@/lib/worklog/flags";
+import { buildWorklogReportSection } from "@/lib/worklog/payrollCompute";
 
 /**
  * Triggered by a Render Cron Job on the 1st of each month.
@@ -45,10 +47,16 @@ export async function POST(req: NextRequest) {
   }));
   const buffer = await buildAttendanceWorkbook(rows, summary.periodLabel);
 
+  let html = summaryToHtml(summary);
+  if (isWorklogEnabled()) {
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    html += await buildWorklogReportSection(monthStr).catch(() => "");
+  }
+
   await sendReportEmail({
     to: settings.reportEmail,
     subject: `iMarc Attendance — Monthly Report (${summary.periodLabel})`,
-    html: summaryToHtml(summary),
+    html,
     attachmentBuffer: buffer as unknown as Buffer,
     attachmentName: `attendance-report-${summary.periodLabel}.xlsx`,
   });
