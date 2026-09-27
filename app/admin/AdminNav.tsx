@@ -12,7 +12,11 @@ const links = [
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
   ...(process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true"
-    ? [{ href: "/admin/worklog/rules", label: "Worklog Rules" }]
+    ? [
+        { href: "/admin/worklog", label: "Daily Review" },
+        { href: "/admin/worklog/rules", label: "Worklog Rules" },
+        { href: "/admin/worklog/log", label: "Worklog Change Log" },
+      ]
     : []),
 ];
 

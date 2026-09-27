@@ -46,16 +46,18 @@ export function deriveDisplayStatusAt(
   return "MISSED";
 }
 
-/** Ensures today's (Lagos) SlotRecord rows exist for a staff member — created lazily on
- * first request of the day rather than only by the (Phase 4) cron, per spec 6.3. */
-export async function ensureTodaySlotRecords(staffId: string, now: Date = new Date()) {
-  const ruleSet = await getRuleSetAt(now);
+/** Ensures a given Lagos day's SlotRecord rows exist for a staff member — created
+ * lazily (here, and by the admin review board / bulk-excuse) rather than only by
+ * the (Phase 4) cron, per spec 6.3. Uses whichever rule set was in force ON that
+ * date, so this is equally correct for past, present, or future dates. */
+export async function ensureSlotRecordsForDate(staffId: string, date: Date) {
+  const ruleSet = await getRuleSetAt(date);
   if (!ruleSet) return null;
 
   const config = ruleSet.config as unknown as RuleSetConfig;
-  if (!(await isWorkingDay(config, now))) return null;
+  if (!(await isWorkingDay(config, date))) return null;
 
-  const dayKey = lagosDateKey(now);
+  const dayKey = lagosDateKey(date);
   const windows = computeSlotWindows(config);
 
   for (let i = 0; i < windows.length; i++) {
@@ -75,6 +77,11 @@ export async function ensureTodaySlotRecords(staffId: string, now: Date = new Da
   }
 
   return { ruleSet, config, dayKey, windows };
+}
+
+/** Today's (Lagos) SlotRecord rows for a staff member. */
+export function ensureTodaySlotRecords(staffId: string, now: Date = new Date()) {
+  return ensureSlotRecordsForDate(staffId, now);
 }
 
 export type TodaySlotView = {
