@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { isWorklogEnabled } from "@/lib/worklog/flags";
 import { getRuleSetAt, listRuleSetVersions, createRuleSetVersion } from "@/lib/worklog/rules";
+import { notifyRulesChanged } from "@/lib/worklog/notifications";
 import { writeAuditLog } from "@/lib/audit";
 
 async function requireAdmin() {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
       after: { version: ruleSet.version, effectiveFrom: ruleSet.effectiveFrom, appliedImmediately: ruleSet.appliedImmediately },
       reason: body.overrideReason,
     });
+    notifyRulesChanged(ruleSet.effectiveFrom).catch(() => {}); // best-effort, never blocks saving the rules
     return NextResponse.json({ ruleSet });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Could not save rules." }, { status: 400 });

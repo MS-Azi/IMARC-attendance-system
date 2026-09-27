@@ -18,7 +18,7 @@ export async function getReviewBoardForDate(date: Date) {
   // otherwise a staff member who never opens the app that day is invisible on the
   // board instead of showing as missed. (The Phase 4 cron will do this in bulk too.)
   for (const id of staffIds) {
-    await ensureSlotRecordsForDate(id, date);
+    await ensureSlotRecordsForDate(id, date, { allowFuture: false });
   }
 
   const [slotRecords, attendanceRecords] = await Promise.all([

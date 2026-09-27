@@ -8,6 +8,7 @@ import { useTilt } from "@/app/_components/useTilt";
 import { getDeviceId } from "@/lib/deviceId";
 import TodaysUpdatesCard from "@/app/_components/worklog/TodaysUpdatesCard";
 import RulesAcknowledgementBanner from "@/app/_components/worklog/RulesAcknowledgementBanner";
+import PushSetupPrompt from "@/app/_components/worklog/PushSetupPrompt";
 
 const WORKLOG_ENABLED = process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true";
 
@@ -167,6 +168,7 @@ export default function ClockPage() {
       </div>
 
       {WORKLOG_ENABLED && <TodaysUpdatesCard />}
+      {WORKLOG_ENABLED && <PushSetupPrompt />}
     </main>
   );
 }

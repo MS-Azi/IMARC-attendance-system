@@ -48,25 +48,45 @@ export default function RulesPageClient() {
 
   const [days, setDays] = useState<NonWorkingDay[]>([]);
   const [newDay, setNewDay] = useState({ date: "", reason: "" });
+  const [startDate, setStartDate] = useState("");
+  const [startDateSaving, setStartDateSaving] = useState(false);
 
   useEffect(() => {
     load();
   }, []);
 
   async function load() {
-    const [rulesRes, daysRes] = await Promise.all([
+    const [rulesRes, daysRes, settingsRes] = await Promise.all([
       fetch("/api/admin/worklog/rules"),
       fetch("/api/admin/worklog/non-working-days"),
+      fetch("/api/admin/worklog/settings"),
     ]);
     const rulesData = await rulesRes.json();
     const daysData = await daysRes.json();
+    const settingsData = await settingsRes.json();
     if (rulesData.current) {
       setCurrent(rulesData.current);
       setConfig(rulesData.current.config);
     }
     setHistory(rulesData.history || []);
     setDays(daysData.days || []);
+    setStartDate(settingsData.startDate ? settingsData.startDate.slice(0, 10) : "");
     setLoading(false);
+  }
+
+  async function saveStartDate() {
+    setStartDateSaving(true);
+    const res = await fetch("/api/admin/worklog/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate: startDate || null }),
+    });
+    setStartDateSaving(false);
+    if (!res.ok) {
+      toast((await res.json()).error, "error");
+      return;
+    }
+    toast("Worklog start date saved.");
   }
 
   function patch(p: Partial<RuleSetConfig>) {
@@ -157,6 +177,28 @@ export default function RulesPageClient() {
           {current ? `Live version ${current.version}` : "No rules published yet"}
         </p>
       </div>
+
+      <Section title="Worklog start date">
+        <p className="font-mono text-[11px] text-muted mb-3">
+          No slot records are ever auto-generated before this date, even if rules are already published — protects
+          historical data from before the module went live. Leave blank for no restriction.
+        </p>
+        <div className="flex items-end gap-2">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm"
+          />
+          <button
+            onClick={saveStartDate}
+            disabled={startDateSaving}
+            className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:underline disabled:opacity-60"
+          >
+            {startDateSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </Section>
 
       {/* Slots and schedule */}
       <Section title="Slots and schedule">

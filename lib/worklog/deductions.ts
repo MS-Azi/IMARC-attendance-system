@@ -13,8 +13,10 @@ export type CategorizedOffence = OffenceEvent & { ordinal: number; isWarning: bo
 
 /** Ordinal position (1-based) of each offence within its (type, ruleSetId) group,
  * sorted by time, and whether that position falls within the warning allowance.
- * This is the shared primitive the real deduction-amount engine (Phase 5) builds on. */
-export function categorizeOffences(offences: OffenceEvent[]): CategorizedOffence[] {
+ * This is the shared primitive the real deduction-amount engine (Phase 5) builds on.
+ * Generic so callers can pass extra fields (e.g. an entityId to notify about) and
+ * have them survive in the returned type. */
+export function categorizeOffences<T extends OffenceEvent>(offences: T[]): (T & { ordinal: number; isWarning: boolean })[] {
   const sorted = [...offences].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
   const counts = new Map<string, number>();
   return sorted.map((o) => {

@@ -257,6 +257,14 @@ model RuleAcknowledgement {
   @@unique([staffId, ruleSetId])
 }
 
+model WorklogSettings {
+  id        Int       @id @default(1)
+  // Lagos calendar day, stored as UTC midnight. Null = no restriction (backward
+  // compatible with rule sets/data created before this setting existed).
+  startDate DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   actorType  String   // "ADMIN" | "STAFF" — no single FK possible across two separate tables

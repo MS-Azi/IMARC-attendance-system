@@ -17,6 +17,17 @@ export function getTransport() {
   });
 }
 
+/** Plain notification email, no attachment — for worklog reminders/warnings. */
+export async function sendEmail(opts: { to: string; subject: string; html: string }) {
+  const transport = getTransport();
+  await transport.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+  });
+}
+
 export async function sendReportEmail(opts: {
   to: string;
   subject: string;

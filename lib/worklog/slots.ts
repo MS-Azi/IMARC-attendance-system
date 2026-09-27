@@ -4,6 +4,7 @@ import { computeSlotWindows } from "./validate";
 import { lagosDateKey, lagosWeekday, lagosMonthStr } from "./lagos";
 import { getRuleSetAt } from "./rules";
 import { OffenceEvent, countWarnings } from "./deductions";
+import { checkSlotCreationGuards } from "./guards";
 
 export type DisplayStatus =
   | "UPCOMING"
@@ -48,17 +49,38 @@ export function deriveDisplayStatusAt(
 }
 
 /** Ensures a given Lagos day's SlotRecord rows exist for a staff member — created
- * lazily (here, and by the admin review board / bulk-excuse) rather than only by
- * the (Phase 4) cron, per spec 6.3. Uses whichever rule set was in force ON that
- * date, so this is equally correct for past, present, or future dates. */
-export async function ensureSlotRecordsForDate(staffId: string, date: Date) {
-  const ruleSet = await getRuleSetAt(date);
-  if (!ruleSet) return null;
+ * lazily (here, and by the admin review board / cron) rather than only by the cron,
+ * per spec 6.3. Uses whichever rule set was in force ON that date, so this is equally
+ * correct for past, present, or future dates.
+ *
+ * Guarded by working day / non-working date / worklogStartDate / staff start date —
+ * see lib/worklog/guards.ts. `allowFuture` defaults true (staff's own /today call,
+ * and admin bulk-excuse for planned leave, both legitimately need future dates); the
+ * board and cron explicitly pass false. */
+export async function ensureSlotRecordsForDate(staffId: string, date: Date, opts: { allowFuture?: boolean } = {}) {
+  const [ruleSet, staff, settings] = await Promise.all([
+    getRuleSetAt(date),
+    prisma.staff.findUnique({ where: { id: staffId }, select: { dateJoined: true } }),
+    prisma.worklogSettings.findUnique({ where: { id: 1 } }),
+  ]);
+  if (!ruleSet || !staff) return null;
 
   const config = ruleSet.config as unknown as RuleSetConfig;
-  if (!(await isWorkingDay(config, date))) return null;
-
   const dayKey = lagosDateKey(date);
+  const nonWorking = await prisma.nonWorkingDay.findUnique({ where: { date: dayKey } });
+
+  const guard = checkSlotCreationGuards({
+    date: dayKey,
+    today: lagosDateKey(new Date()),
+    weekday: lagosWeekday(date),
+    workingWeekdays: config.workingWeekdays,
+    isNonWorkingDay: !!nonWorking,
+    worklogStartDate: settings?.startDate ?? null,
+    staffDateJoined: lagosDateKey(staff.dateJoined),
+    allowFuture: opts.allowFuture ?? true,
+  });
+  if (!guard.allowed) return null;
+
   const windows = computeSlotWindows(config);
 
   for (let i = 0; i < windows.length; i++) {
