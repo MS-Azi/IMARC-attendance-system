@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import CornerBrackets from "@/app/_components/CornerBrackets";
 import { useTilt } from "@/app/_components/useTilt";
 import { getDeviceId } from "@/lib/deviceId";
+import TodaysUpdatesCard from "@/app/_components/worklog/TodaysUpdatesCard";
+import RulesAcknowledgementBanner from "@/app/_components/worklog/RulesAcknowledgementBanner";
+
+const WORKLOG_ENABLED = process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true";
 
 type Record = {
   clockIn: string | null;
@@ -83,6 +88,16 @@ export default function ClockPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6">
+      {WORKLOG_ENABLED && <RulesAcknowledgementBanner />}
+
+      {WORKLOG_ENABLED && (
+        <Link
+          href="/worklog/me"
+          className="absolute top-6 left-6 font-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-ink"
+        >
+          My Updates
+        </Link>
+      )}
       <button
         onClick={logout}
         className="absolute top-6 right-6 font-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-ink"
@@ -148,6 +163,8 @@ export default function ClockPage() {
           </p>
         )}
       </div>
+
+      {WORKLOG_ENABLED && <TodaysUpdatesCard />}
     </main>
   );
 }
