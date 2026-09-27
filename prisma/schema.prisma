@@ -13,6 +13,13 @@ model Admin {
   email        String @unique
   passwordHash String
   createdAt    DateTime @default(now())
+
+  createdRuleSets        WorklogRuleSet[]
+  createdNonWorkingDays  NonWorkingDay[]
+  reviewedSlotRecords    SlotRecord[]
+  reviewedOffences       AttendanceOffenceReview[]
+  createdCompensations   StaffCompensation[]
+  finalizedPayrollMonths PayrollMonth[]
 }
 
 model Staff {
@@ -29,6 +36,13 @@ model Staff {
   boundDeviceId String?   // device ID this staff member's check-ins are bound to
   deviceBoundAt DateTime? // when boundDeviceId was last (re)bound
   attendances   Attendance[]
+
+  slotRecords          SlotRecord[]
+  compensations        StaffCompensation[]
+  pushSubscriptions    PushSubscription[]
+  notificationLogs     NotificationLog[]
+  ruleAcknowledgements RuleAcknowledgement[]
+  payrollLines         PayrollLine[]
 }
 
 model Attendance {
@@ -51,6 +65,8 @@ model Attendance {
   deviceStatus         DeviceStatus  @default(MATCHED)
   clockOutDeviceId     String?
   clockOutDeviceStatus DeviceStatus?
+
+  offenceReview AttendanceOffenceReview?
 
   @@unique([staffId, date])
   @@index([date])
@@ -77,4 +93,190 @@ model MonthlyReport {
   generatedAt DateTime @default(now())
   emailedTo   String
   summaryJson String   // serialized summary stats, for re-download without recompute
+}
+
+// ---------------------------------------------------------------------------
+// Worklog & Deductions module (behind WORKLOG_ENABLED). All additive — see
+// lib/worklog/ for the domain logic. Nothing above this line is touched by it.
+// ---------------------------------------------------------------------------
+
+enum SlotOutcome {
+  PENDING
+  ON_TIME
+  LATE
+  MISSED
+}
+
+enum ReviewStatus {
+  VALID
+  FALSE
+  EXCUSED
+}
+
+model WorklogRuleSet {
+  id                 String   @id @default(cuid())
+  version            Int
+  effectiveFrom      DateTime // Lagos calendar day, stored as UTC midnight
+  appliedImmediately Boolean  @default(false)
+  overrideReason     String?
+  config             Json     // RuleSetConfig — see lib/worklog/config.ts
+  createdById        String
+  createdBy          Admin    @relation(fields: [createdById], references: [id])
+  createdAt          DateTime @default(now())
+
+  slotRecords      SlotRecord[]
+  acknowledgements RuleAcknowledgement[]
+
+  @@unique([version])
+}
+
+model NonWorkingDay {
+  id          String   @id @default(cuid())
+  date        DateTime @unique // Lagos calendar day, stored as UTC midnight
+  reason      String
+  createdById String
+  createdBy   Admin    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model SlotRecord {
+  id           String         @id @default(cuid())
+  staffId      String
+  staff        Staff          @relation(fields: [staffId], references: [id])
+  date         DateTime       // Lagos calendar day, stored as UTC midnight
+  slotIndex    Int
+  slotLabel    String
+  slotTime     String         // "HH:mm" snapshot at creation time, for display stability
+  ruleSetId    String
+  ruleSet      WorklogRuleSet @relation(fields: [ruleSetId], references: [id])
+  outcome      SlotOutcome    @default(PENDING)
+  tickedAt     DateTime?
+  note         String?
+  link         String?
+  reviewStatus ReviewStatus   @default(VALID)
+  reviewReason String?
+  reviewedById String?
+  reviewedBy   Admin?         @relation(fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  notificationLogs NotificationLog[]
+
+  @@unique([staffId, date, slotIndex])
+  @@index([date])
+}
+
+model AttendanceOffenceReview {
+  // Existence of this row means the LATE_CLOCK_IN offence on that Attendance record is excused.
+  id                 String     @id @default(cuid())
+  attendanceRecordId String     @unique
+  attendanceRecord   Attendance @relation(fields: [attendanceRecordId], references: [id])
+  reason             String
+  reviewedById       String
+  reviewedBy         Admin      @relation(fields: [reviewedById], references: [id])
+  reviewedAt         DateTime   @default(now())
+}
+
+model StaffCompensation {
+  // Never edited in place — a new row per change, so salary history is preserved.
+  id                String   @id @default(cuid())
+  staffId           String
+  staff             Staff    @relation(fields: [staffId], references: [id])
+  monthlySalaryKobo Int
+  grade             String?
+  effectiveFrom     DateTime
+  createdById       String
+  createdBy         Admin    @relation(fields: [createdById], references: [id])
+  createdAt         DateTime @default(now())
+
+  @@index([staffId, effectiveFrom])
+}
+
+model PayrollMonth {
+  id            String    @id @default(cuid())
+  month         String    @unique // "YYYY-MM" (Lagos)
+  finalizedAt   DateTime?
+  finalizedById String?
+  finalizedBy   Admin?    @relation(fields: [finalizedById], references: [id])
+
+  lines PayrollLine[]
+}
+
+model PayrollLine {
+  id                 String       @id @default(cuid())
+  payrollMonthId     String
+  payrollMonth       PayrollMonth @relation(fields: [payrollMonthId], references: [id])
+  staffId            String
+  staff              Staff        @relation(fields: [staffId], references: [id])
+  baseKobo           Int
+  breakdown          Json
+  totalBeforeCapKobo Int
+  capKobo            Int
+  totalDeductionKobo Int
+  capped             Boolean
+  netKobo            Int
+  deductionsEnabled  Boolean
+
+  @@unique([payrollMonthId, staffId])
+}
+
+model PushSubscription {
+  id            String    @id @default(cuid())
+  staffId       String
+  staff         Staff     @relation(fields: [staffId], references: [id])
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+}
+
+model NotificationLog {
+  id           String      @id @default(cuid())
+  staffId      String
+  staff        Staff       @relation(fields: [staffId], references: [id])
+  slotRecordId String?
+  slotRecord   SlotRecord? @relation(fields: [slotRecordId], references: [id])
+  type         String      // "DUE_SOON" | "NOW_LATE" | "WARNING" | "RULES_CHANGED"
+  channel      String      // "PUSH" | "EMAIL"
+  dedupeKey    String      @unique // guarantees idempotent sends across overlapping/repeated cron runs
+  sentAt       DateTime    @default(now())
+  error        String?
+}
+
+model RuleAcknowledgement {
+  id             String         @id @default(cuid())
+  staffId        String
+  staff          Staff          @relation(fields: [staffId], references: [id])
+  ruleSetId      String
+  ruleSet        WorklogRuleSet @relation(fields: [ruleSetId], references: [id])
+  acknowledgedAt DateTime       @default(now())
+
+  @@unique([staffId, ruleSetId])
+}
+
+model WorklogSettings {
+  id        Int       @id @default(1)
+  // Lagos calendar day, stored as UTC midnight. Null = no restriction (backward
+  // compatible with rule sets/data created before this setting existed).
+  startDate DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  String   // "ADMIN" | "STAFF" — no single FK possible across two separate tables
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

@@ -11,6 +11,14 @@ const links = [
   { href: "/admin/staff", label: "Staff" },
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
+  ...(process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true"
+    ? [
+        { href: "/admin/worklog", label: "Daily Review" },
+        { href: "/admin/worklog/payroll", label: "Worklog Payroll" },
+        { href: "/admin/worklog/rules", label: "Worklog Rules" },
+        { href: "/admin/worklog/log", label: "Worklog Change Log" },
+      ]
+    : []),
 ];
 
 export default function AdminNav() {
@@ -71,13 +79,13 @@ export default function AdminNav() {
 
       {/* Mobile: sticky top bar with a hamburger menu */}
       <div className="md:hidden sticky top-0 z-30 glass border-b border-border">
-        <div className="flex items-center justify-between px-4 py-3">
-          {wordmark}
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
+          <div className="min-w-0 break-words">{wordmark}</div>
           <button
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
-            className="focus-ring rounded-md border border-border p-2 text-ink"
+            className="focus-ring shrink-0 rounded-md border border-border p-2 text-ink"
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
               {open ? (

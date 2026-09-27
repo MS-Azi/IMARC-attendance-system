@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import CornerBrackets from "@/app/_components/CornerBrackets";
+import Modal from "@/app/_components/Modal";
+import { useToast } from "@/app/_components/ToastProvider";
+
+const WORKLOG_ENABLED = process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true";
 
 type Staff = {
   id: string;
@@ -14,6 +18,8 @@ type Staff = {
   active: boolean;
 };
 
+type Compensation = { id: string; monthlySalaryKobo: number; grade: string | null; effectiveFrom: string };
+
 const emptyForm = {
   fullName: "",
   loginId: "",
@@ -25,11 +31,18 @@ const emptyForm = {
 };
 
 export default function StaffPage() {
+  const toast = useToast();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [payStaff, setPayStaff] = useState<Staff | null>(null);
+  const [payHistory, setPayHistory] = useState<Compensation[]>([]);
+  const [grades, setGrades] = useState<string[]>([]);
+  const [payForm, setPayForm] = useState({ salaryNaira: "", grade: "", effectiveFrom: "" });
+  const [paySaving, setPaySaving] = useState(false);
 
   useEffect(() => {
     load();
@@ -39,6 +52,48 @@ export default function StaffPage() {
     const res = await fetch("/api/staff");
     const data = await res.json();
     setStaff(data.staff || []);
+  }
+
+  async function openPay(s: Staff) {
+    setPayStaff(s);
+    setPayForm({ salaryNaira: "", grade: "", effectiveFrom: "" });
+    const [histRes, rulesRes] = await Promise.all([
+      fetch(`/api/admin/staff/${s.id}/compensation`),
+      fetch("/api/admin/worklog/rules"),
+    ]);
+    const hist = await histRes.json();
+    const rules = await rulesRes.json();
+    setPayHistory(hist.history || []);
+    setGrades(rules.current?.config?.amountsApply === "BY_GRADE" ? rules.current.config.grades : []);
+  }
+
+  async function savePay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!payStaff) return;
+    const kobo = Math.round(parseFloat(payForm.salaryNaira || "0") * 100);
+    if (!Number.isFinite(kobo) || kobo <= 0) {
+      toast("Enter a valid salary.", "error");
+      return;
+    }
+    setPaySaving(true);
+    const res = await fetch(`/api/admin/staff/${payStaff.id}/compensation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        monthlySalaryKobo: kobo,
+        grade: payForm.grade || null,
+        effectiveFrom: payForm.effectiveFrom || undefined,
+      }),
+    });
+    const data = await res.json();
+    setPaySaving(false);
+    if (!res.ok) {
+      toast(data.error, "error");
+      return;
+    }
+    toast("Pay updated.");
+    setPayForm({ salaryNaira: "", grade: "", effectiveFrom: "" });
+    openPay(payStaff);
   }
 
   async function addStaff(e: React.FormEvent) {
@@ -120,6 +175,7 @@ export default function StaffPage() {
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Login ID</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Status</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>
+                {WORKLOG_ENABLED && <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>}
               </tr>
             </thead>
             <tbody>
@@ -137,6 +193,13 @@ export default function StaffPage() {
                       {s.active ? "Deactivate" : "Reactivate"}
                     </button>
                   </td>
+                  {WORKLOG_ENABLED && (
+                    <td className="px-3 py-2.5 md:px-5 md:py-3 text-right">
+                      <button onClick={() => openPay(s)} className="font-mono text-[11px] uppercase tracking-[0.1em] text-accent hover:underline">
+                        Pay
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -147,6 +210,73 @@ export default function StaffPage() {
           className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-card bg-gradient-to-l from-surface to-transparent md:hidden"
         />
       </div>
+
+      {WORKLOG_ENABLED && (
+        <Modal open={!!payStaff} onClose={() => setPayStaff(null)} title={payStaff ? `Pay — ${payStaff.fullName}` : ""}>
+          {payHistory.length > 0 && (
+            <div className="mb-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-1.5">Current</p>
+              <p className="font-mono text-sm">
+                {"₦"}
+                {(payHistory[0].monthlySalaryKobo / 100).toLocaleString()} / month
+                {payHistory[0].grade ? ` · ${payHistory[0].grade}` : ""}
+                <span className="text-muted"> (from {new Date(payHistory[0].effectiveFrom).toLocaleDateString()})</span>
+              </p>
+            </div>
+          )}
+          <form onSubmit={savePay} className="space-y-3">
+            <Field
+              label={"Monthly salary (₦)"}
+              type="number"
+              value={payForm.salaryNaira}
+              onChange={(v) => setPayForm({ ...payForm, salaryNaira: v })}
+              required
+            />
+            {grades.length > 0 && (
+              <div>
+                <label className="block font-mono text-[11px] uppercase tracking-[0.13em] text-muted mb-1.5">Grade</label>
+                <select
+                  value={payForm.grade}
+                  onChange={(e) => setPayForm({ ...payForm, grade: e.target.value })}
+                  className="focus-ring w-full rounded-md bg-surface2 border border-border px-3 py-2 text-sm text-ink"
+                >
+                  <option value="">—</option>
+                  {grades.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <Field
+              label="Effective from (blank = today)"
+              type="date"
+              value={payForm.effectiveFrom}
+              onChange={(v) => setPayForm({ ...payForm, effectiveFrom: v })}
+            />
+            <button
+              type="submit"
+              disabled={paySaving}
+              className="focus-ring rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] font-medium text-white disabled:opacity-60"
+            >
+              {paySaving ? "Saving…" : "Save pay"}
+            </button>
+          </form>
+          {payHistory.length > 1 && (
+            <div className="mt-5 pt-4 border-t border-border">
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">History</p>
+              {payHistory.slice(1).map((c) => (
+                <p key={c.id} className="font-mono text-[11px] text-muted py-0.5">
+                  {"₦"}
+                  {(c.monthlySalaryKobo / 100).toLocaleString()}
+                  {c.grade ? ` · ${c.grade}` : ""} — from {new Date(c.effectiveFrom).toLocaleDateString()}
+                </p>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }

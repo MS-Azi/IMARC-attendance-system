@@ -67,6 +67,14 @@ or an API ping).
    npx prisma db seed
    ```
 
+   > **⚠️ Do not run `prisma db push` from a `main` checkout while the
+   > `feature/worklog` branch is unmerged.** That branch has added its tables
+   > directly to the live database ahead of merging. `db push` treats
+   > `prisma/schema.prisma` as the full source of truth for the schema — run
+   > from `main` (which doesn't yet declare those tables), it would see them
+   > as unrecognized and prompt to drop them. Safe again once
+   > `feature/worklog` is merged into `main`.
+
 7. **Set the office location and late threshold.** Sign in as admin, go to
    Settings, click "Use my current location" while on-site (or standing wherever
    you're testing from), set the radius, and confirm the late threshold (defaults
