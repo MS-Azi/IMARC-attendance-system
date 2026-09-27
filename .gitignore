@@ -17,6 +17,9 @@
 /prisma/*.db-journal
 /prisma/migrations/dev.db*
 
+# local scratch screenshots (Playwright review captures, never committed)
+/tmp-screenshots
+
 # misc
 .DS_Store
 *.pem

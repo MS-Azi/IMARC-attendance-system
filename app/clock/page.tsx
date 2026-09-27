@@ -88,7 +88,9 @@ export default function ClockPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6">
-      {WORKLOG_ENABLED && <RulesAcknowledgementBanner />}
+      {/* Never shown before clock-in — a rules nag must not be able to delay or block
+          the time-critical clock-in action. Only mounts once already clocked in today. */}
+      {WORKLOG_ENABLED && hasClockedIn && <RulesAcknowledgementBanner />}
 
       {WORKLOG_ENABLED && (
         <Link

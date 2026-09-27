@@ -12,21 +12,33 @@ type CurrentRuleSet = {
   capPercent: number;
 };
 
-/** Blocks the rest of the app until the staff member acknowledges the currently
- * effective rule set. Mounted on every staff-facing worklog page. */
+/**
+ * Blocks the page it's mounted on until the staff member acknowledges the currently
+ * effective rule set. Deliberately NOT mounted on /clock until after clock-in — a
+ * rules nag must never be able to delay or block that time-critical action. Fails
+ * open on any fetch error/timeout (starts, and stays, unacknowledged=true / ruleSet=null
+ * — i.e. renders nothing — unless a definite "not yet acknowledged" response arrives).
+ */
 export default function RulesAcknowledgementBanner() {
   const [ruleSet, setRuleSet] = useState<CurrentRuleSet | null>(null);
   const [acknowledged, setAcknowledged] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/worklog/rules/current")
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    fetch("/api/worklog/rules/current", { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setRuleSet(d.ruleSet);
         setAcknowledged(d.acknowledged);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   if (!ruleSet || acknowledged) return null;
