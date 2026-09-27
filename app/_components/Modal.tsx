@@ -47,8 +47,17 @@ export default function Modal({
         className="glass relative rounded-card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
       >
         <CornerBrackets />
+        {dismissible && (
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="focus-ring absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-md text-muted hover:text-ink"
+          >
+            ×
+          </button>
+        )}
         {title && (
-          <h2 className="font-display text-lg font-bold uppercase tracking-tight mb-4">{title}</h2>
+          <h2 className="font-display text-lg font-bold uppercase tracking-tight mb-4 pr-6">{title}</h2>
         )}
         {children}
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@/app/_components/Modal";
 import { useToast } from "@/app/_components/ToastProvider";
+import { fmtTime } from "@/lib/worklog/format";
 
 type Slot = {
   id: string;
@@ -31,7 +32,7 @@ const STATUS_COLOR: Record<string, string> = {
   UPCOMING: "text-muted",
   OPEN_ON_TIME: "text-accent",
   OPEN_LATE: "text-late",
-  MISSED: "text-bad",
+  MISSED: "text-bad/60",
   ON_TIME: "text-good",
   LATE: "text-late",
   EXCUSED: "text-muted",
@@ -40,10 +41,7 @@ const STATUS_COLOR: Record<string, string> = {
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
-function fmt(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
+const fmt = fmtTime;
 
 export default function ReviewBoardClient() {
   const toast = useToast();

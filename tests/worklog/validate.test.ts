@@ -1,7 +1,7 @@
 /**
  * Run with: npx ts-node --compiler-options {\"module\":\"CommonJS\"} tests/worklog/validate.test.ts
  */
-import { validateRuleSetConfig, computeSlotWindows } from "../../lib/worklog/validate";
+import { validateRuleSetConfig, computeSlotWindows, labelMatchesTime } from "../../lib/worklog/validate";
 import { defaultRuleSetConfig, DEFAULT_GRADE_KEY, RuleSetConfig } from "../../lib/worklog/config";
 
 function assert(cond: boolean, msg: string) {
@@ -146,5 +146,14 @@ const byGrade: RuleSetConfig = {
   },
 };
 assert(validateRuleSetConfig(byGrade).ok, "BY_GRADE with a ladder per grade (deductions off) is valid");
+
+console.log("\n[12] labelMatchesTime — admin hint for mismatched slot labels");
+assert(labelMatchesTime("10AM", "10:00"), "10AM matches 10:00");
+assert(labelMatchesTime("2:30PM", "14:30"), "2:30PM matches 14:30");
+assert(labelMatchesTime("12PM", "12:00"), "12PM (noon) matches 12:00");
+assert(labelMatchesTime("12AM", "00:00"), "12AM (midnight) matches 00:00");
+assert(!labelMatchesTime("10AM", "14:30"), "10AM does NOT match 14:30 (the bug this catches)");
+assert(!labelMatchesTime("4:30PM", "16:00"), "4:30PM does NOT match 16:00");
+assert(labelMatchesTime("Morning check-in", "10:00"), "a label with no time in it is never flagged");
 
 console.log("\nALL CHECKS PASSED");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fmtDateTime } from "@/lib/worklog/format";
 
 type Entry = {
   id: string;
@@ -53,7 +54,7 @@ export default function ChangeLogClient() {
               {entries.map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-0 align-top">
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-muted whitespace-nowrap">
-                    {new Date(e.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {fmtDateTime(e.createdAt)}
                   </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">{e.actorName}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] uppercase tracking-[0.08em]">{e.action}</td>

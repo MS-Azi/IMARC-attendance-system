@@ -9,8 +9,9 @@ import {
   DEFAULT_GRADE_KEY,
   defaultRuleSetConfig,
 } from "@/lib/worklog/config";
-import { validateRuleSetConfig, computeSlotWindows } from "@/lib/worklog/validate";
+import { validateRuleSetConfig, computeSlotWindows, labelMatchesTime } from "@/lib/worklog/validate";
 import { minutesToHHMM } from "@/lib/worklog/lagos";
+import { fmtDate } from "@/lib/worklog/format";
 import TierLadderEditor from "./_TierLadderEditor";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -160,7 +161,8 @@ export default function RulesPageClient() {
       {/* Slots and schedule */}
       <Section title="Slots and schedule">
         {config.slots.map((slot, i) => (
-          <div key={i} className="flex flex-wrap items-end gap-2 mb-3">
+          <div key={i} className="mb-3">
+          <div className="flex flex-wrap items-end gap-2">
             <Field label="Label">
               <input
                 value={slot.label}
@@ -217,6 +219,12 @@ export default function RulesPageClient() {
             >
               Remove
             </button>
+          </div>
+          {!labelMatchesTime(slot.label, slot.time) && (
+            <p className="font-mono text-[11px] text-late mt-1">
+              ⚠ Label "{slot.label}" doesn't match its time ({slot.time}) — check this is intentional.
+            </p>
+          )}
           </div>
         ))}
         <button
@@ -296,7 +304,7 @@ export default function RulesPageClient() {
         {days.map((d) => (
           <div key={d.id} className="flex items-center justify-between font-mono text-[11px] py-1 border-b border-border last:border-0">
             <span>
-              {new Date(d.date).toLocaleDateString()} — {d.reason}
+              {fmtDate(d.date)} — {d.reason}
             </span>
             <button onClick={() => removeNonWorkingDay(d.id)} className="text-muted hover:text-bad uppercase tracking-[0.1em]">
               Remove
@@ -484,7 +492,7 @@ export default function RulesPageClient() {
         {history.map((v) => (
           <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] py-1.5 border-b border-border last:border-0">
             <span>
-              v{v.version} · effective {new Date(v.effectiveFrom).toLocaleDateString()}
+              v{v.version} · effective {fmtDate(v.effectiveFrom)}
               {v.appliedImmediately ? " (applied immediately)" : ""} · {v.createdBy?.email ?? "—"}
             </span>
           </div>

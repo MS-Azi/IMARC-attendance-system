@@ -24,11 +24,14 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
   return (
     <ToastContext.Provider value={show}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex flex-col gap-2 items-end">
+      <div
+        className="pointer-events-none fixed inset-x-4 z-[60] flex flex-col gap-2 items-end"
+        style={{ bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`glass rounded-card px-4 py-3 font-mono text-xs uppercase tracking-[0.12em] ${
+            className={`glass rounded-card px-4 py-3 font-mono text-xs uppercase tracking-[0.12em] max-w-full break-words ${
               t.kind === "ok" ? "text-good" : t.kind === "warning" ? "text-late" : "text-bad"
             }`}
           >

@@ -28,6 +28,22 @@ function validTime(value: unknown): value is string {
   return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
+/** Best-effort check that a slot's label mentions a time matching its actual time —
+ * catches e.g. a slot labeled "10AM" whose time was changed to 14:30. Returns true
+ * (nothing to flag) when the label has no recognizable time to compare, since free-text
+ * labels like "Morning check-in" are legitimate and shouldn't be flagged. This is a
+ * non-blocking admin hint, not a validation rule — never affects whether a config saves. */
+export function labelMatchesTime(label: string, time: string): boolean {
+  const match = label.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
+  if (!match) return true;
+  let hour = parseInt(match[1], 10);
+  const minute = match[2] ? parseInt(match[2], 10) : 0;
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hour !== 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
+  return hour * 60 + minute === parseHHMM(time);
+}
+
 // An empty ladder is a legitimate choice — it means this offence type never costs
 // anything (deduction engine treats "no matching tier" as amount 0), not an error.
 function validateTierLadder(offenceType: OffenceType, tiers: TierRow[]): string | null {

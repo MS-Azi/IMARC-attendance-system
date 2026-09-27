@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import RulesAcknowledgementBanner from "@/app/_components/worklog/RulesAcknowledgementBanner";
+import { fmtDate } from "@/lib/worklog/format";
 
 type Slot = {
   id: string;
@@ -13,13 +14,15 @@ type Slot = {
   link: string | null;
 };
 type Day = { date: string; slots: Slot[] };
-type Counts = { LATE_SUBMISSION: number; MISSED_SUBMISSION: number; FALSE_SUBMISSION: number };
+type Counts = { LATE_CLOCK_IN: number; LATE_SUBMISSION: number; MISSED_SUBMISSION: number; FALSE_SUBMISSION: number };
+const EMPTY_COUNTS: Counts = { LATE_CLOCK_IN: 0, LATE_SUBMISSION: 0, MISSED_SUBMISSION: 0, FALSE_SUBMISSION: 0 };
 
+// MISSED uses a more muted red than FALSE — a miss and a lie aren't the same severity.
 const STATUS_COLOR: Record<Slot["status"], string> = {
   UPCOMING: "text-muted",
   OPEN_ON_TIME: "text-accent",
   OPEN_LATE: "text-late",
-  MISSED: "text-bad",
+  MISSED: "text-bad/60",
   ON_TIME: "text-good",
   LATE: "text-late",
   EXCUSED: "text-muted",
@@ -43,7 +46,8 @@ export default function MyRecordClient() {
   const router = useRouter();
   const [month, setMonth] = useState(currentMonthStr());
   const [days, setDays] = useState<Day[]>([]);
-  const [counts, setCounts] = useState<Counts>({ LATE_SUBMISSION: 0, MISSED_SUBMISSION: 0, FALSE_SUBMISSION: 0 });
+  const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS);
+  const [warnings, setWarnings] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,7 +60,8 @@ export default function MyRecordClient() {
     if (res.status === 401) return router.push("/login");
     const data = await res.json();
     setDays(data.days || []);
-    setCounts(data.counts || { LATE_SUBMISSION: 0, MISSED_SUBMISSION: 0, FALSE_SUBMISSION: 0 });
+    setCounts(data.counts || EMPTY_COUNTS);
+    setWarnings(data.warnings || 0);
     setLoading(false);
   }
 
@@ -81,13 +86,17 @@ export default function MyRecordClient() {
         </button>
       </div>
 
-      <div className="glass rounded-card p-4 mb-6 grid grid-cols-3 gap-2 text-center">
+      <div className="glass rounded-card p-4 mb-3 grid grid-cols-2 gap-3 text-center">
         <div>
-          <p className="font-mono text-xl text-late">{counts.LATE_SUBMISSION}</p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">Late</p>
+          <p className="font-mono text-xl text-late">{counts.LATE_CLOCK_IN}</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">Late clock-in</p>
         </div>
         <div>
-          <p className="font-mono text-xl text-bad">{counts.MISSED_SUBMISSION}</p>
+          <p className="font-mono text-xl text-late">{counts.LATE_SUBMISSION}</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">Late submission</p>
+        </div>
+        <div>
+          <p className="font-mono text-xl text-bad/60">{counts.MISSED_SUBMISSION}</p>
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">Missed</p>
         </div>
         <div>
@@ -95,6 +104,15 @@ export default function MyRecordClient() {
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">Flagged false</p>
         </div>
       </div>
+
+      <div className="glass rounded-card p-4 mb-6 text-center">
+        <p className="font-mono text-xl text-ink">{warnings}</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">Warnings received this month</p>
+      </div>
+
+      <Link href="/worklog/rules" className="font-mono text-xs text-accent hover:underline block mb-6">
+        View full rules →
+      </Link>
 
       {!loading && days.length === 0 && (
         <p className="font-mono text-muted text-xs text-center py-8">No slots recorded this month.</p>
@@ -106,9 +124,7 @@ export default function MyRecordClient() {
           .reverse()
           .map((day) => (
             <div key={day.date} className="glass rounded-card p-4">
-              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">
-                {new Date(day.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-              </p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted mb-2">{fmtDate(day.date)}</p>
               <div className="space-y-1.5">
                 {day.slots.map((s) => (
                   <div key={s.id} className="flex items-center justify-between font-mono text-xs">

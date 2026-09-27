@@ -5,6 +5,7 @@ import CornerBrackets from "@/app/_components/CornerBrackets";
 import Modal from "@/app/_components/Modal";
 import { useToast } from "@/app/_components/ToastProvider";
 import { buildWhatsAppMessage, buildWhatsAppUrl } from "@/lib/worklog/whatsapp";
+import { fmtTime } from "@/lib/worklog/format";
 
 type Slot = {
   id: string;
@@ -31,29 +32,17 @@ const STATUS_LABEL: Record<Slot["status"], string> = {
   EXCUSED: "Excused",
 };
 
+// MISSED deliberately uses a more muted red than the bright accent red used for
+// actionable/open items, so the card doesn't read as universally alarming.
 const STATUS_COLOR: Record<Slot["status"], string> = {
   UPCOMING: "text-muted",
-  OPEN_ON_TIME: "text-accent glow",
-  OPEN_LATE: "text-late glow",
-  MISSED: "text-bad",
+  OPEN_ON_TIME: "text-accent",
+  OPEN_LATE: "text-late",
+  MISSED: "text-bad/60",
   ON_TIME: "text-good",
   LATE: "text-late",
   EXCUSED: "text-muted",
 };
-
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function countdown(toIso: string, now: Date): string {
-  const ms = new Date(toIso).getTime() - now.getTime();
-  if (ms <= 0) return "0:00";
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
-}
 
 export default function TodaysUpdatesCard() {
   const toast = useToast();
@@ -61,7 +50,6 @@ export default function TodaysUpdatesCard() {
   const [whatsapp, setWhatsapp] = useState<WhatsApp>(null);
   const [staffFirstName, setStaffFirstName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(new Date());
   const [active, setActive] = useState<Slot | null>(null);
   const [note, setNote] = useState("");
   const [link, setLink] = useState("");
@@ -70,8 +58,6 @@ export default function TodaysUpdatesCard() {
 
   useEffect(() => {
     load();
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
   }, []);
 
   async function load() {
@@ -140,33 +126,40 @@ export default function TodaysUpdatesCard() {
       <div className="tilt glass card-glow-hover relative rounded-card p-6 w-full max-w-sm space-y-4 mt-6">
         <CornerBrackets />
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">Today's Updates</p>
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {slots.map((s) => {
             const tappable = s.status === "OPEN_ON_TIME" || s.status === "OPEN_LATE";
-            return (
-              <div key={s.id}>
+
+            if (tappable) {
+              return (
                 <button
+                  key={s.id}
                   onClick={() => openSlot(s)}
-                  disabled={!tappable}
-                  className={`w-full text-left ${tappable ? "cursor-pointer" : "cursor-default"}`}
+                  className="focus-ring glow-box w-full flex items-center justify-between rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-3 text-left text-white"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm">{s.label}</span>
-                    <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${STATUS_COLOR[s.status]}`}>
-                      {STATUS_LABEL[s.status]}
-                    </span>
+                  <div>
+                    <p className="font-mono text-sm font-medium">{s.label}</p>
+                    <p className="font-mono text-[10px] opacity-80 mt-0.5">
+                      {s.status === "OPEN_ON_TIME" ? `on time until ${fmtTime(s.onTimeClosesAt)}` : `closes at ${fmtTime(s.lateClosesAt)}`}
+                    </p>
                   </div>
-                  {s.status === "OPEN_ON_TIME" && (
-                    <p className="font-mono text-[10px] text-muted mt-0.5">on-time for {countdown(s.onTimeClosesAt, now)}</p>
-                  )}
-                  {s.status === "OPEN_LATE" && (
-                    <p className="font-mono text-[10px] text-muted mt-0.5">closes in {countdown(s.lateClosesAt, now)}</p>
-                  )}
-                  {s.status === "UPCOMING" && <p className="font-mono text-[10px] text-muted mt-0.5">opens {fmtTime(s.opensAt)}</p>}
-                  {(s.status === "ON_TIME" || s.status === "LATE") && s.note && (
-                    <p className="font-mono text-[10px] text-muted mt-0.5 truncate">"{s.note}"</p>
-                  )}
+                  <span className="font-mono text-xs uppercase tracking-[0.1em] whitespace-nowrap">Submit →</span>
                 </button>
+              );
+            }
+
+            return (
+              <div key={s.id} className="w-full">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm">{s.label}</span>
+                  <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${STATUS_COLOR[s.status]}`}>
+                    {STATUS_LABEL[s.status]}
+                  </span>
+                </div>
+                {s.status === "UPCOMING" && <p className="font-mono text-[10px] text-muted mt-0.5">opens {fmtTime(s.opensAt)}</p>}
+                {(s.status === "ON_TIME" || s.status === "LATE") && s.note && (
+                  <p className="font-mono text-[10px] text-muted mt-0.5 truncate">"{s.note}"</p>
+                )}
               </div>
             );
           })}
@@ -197,17 +190,27 @@ export default function TodaysUpdatesCard() {
               className="focus-ring w-full rounded-md bg-surface2 border border-border px-3 py-2 text-sm"
             />
           </div>
+          <p className="font-mono text-[11px] text-muted">After you submit, WhatsApp opens so you can attach your work.</p>
           {active?.status === "OPEN_LATE" && (
             <p className="font-mono text-late text-[11px]">This window is past the on-time cutoff — submitting now counts as late.</p>
           )}
           {formError && <p className="font-mono text-bad text-xs">{formError}</p>}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="focus-ring glow-box w-full rounded-md bg-accent hover:bg-accentDim transition-colors py-3 font-mono text-xs uppercase tracking-[0.2em] font-medium text-white disabled:opacity-60"
-          >
-            {submitting ? "Submitting…" : "Submit"}
-          </button>
+          <div className="flex items-center gap-4 pt-1">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="focus-ring glow-box flex-1 rounded-md bg-accent hover:bg-accentDim transition-colors py-3 font-mono text-xs uppercase tracking-[0.2em] font-medium text-white disabled:opacity-60"
+            >
+              {submitting ? "Submitting…" : "Submit"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActive(null)}
+              className="font-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-ink"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </Modal>
     </>

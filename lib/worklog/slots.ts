@@ -3,6 +3,7 @@ import { RuleSetConfig } from "./config";
 import { computeSlotWindows } from "./validate";
 import { lagosDateKey, lagosWeekday, lagosMonthStr } from "./lagos";
 import { getRuleSetAt } from "./rules";
+import { OffenceEvent, countWarnings } from "./deductions";
 
 export type DisplayStatus =
   | "UPCOMING"
@@ -133,21 +134,32 @@ export async function getTodaySlotsForStaff(staffId: string, now: Date = new Dat
   });
 }
 
-export type MonthOffenceCounts = Record<"LATE_SUBMISSION" | "MISSED_SUBMISSION" | "FALSE_SUBMISSION", number>;
+export type MonthOffenceCounts = Record<"LATE_CLOCK_IN" | "LATE_SUBMISSION" | "MISSED_SUBMISSION" | "FALSE_SUBMISSION", number>;
 
 export async function getMonthRecordsForStaff(staffId: string, monthStr: string, now: Date = new Date()) {
   const [year, month] = monthStr.split("-").map(Number);
   const start = lagosDateKey(new Date(Date.UTC(year, month - 1, 1)));
   const end = lagosDateKey(new Date(Date.UTC(year, month, 1)));
+  // Attendance.date uses the (unrelated, UTC-based) attendance module's own day
+  // convention, not lagosDateKey — query it on its own terms.
+  const attStart = new Date(Date.UTC(year, month - 1, 1));
+  const attEnd = new Date(Date.UTC(year, month, 1));
 
-  const records = await prisma.slotRecord.findMany({
-    where: { staffId, date: { gte: start, lt: end } },
-    include: { ruleSet: true },
-    orderBy: [{ date: "asc" }, { slotIndex: "asc" }],
-  });
+  const [records, lateAttendance] = await Promise.all([
+    prisma.slotRecord.findMany({
+      where: { staffId, date: { gte: start, lt: end } },
+      include: { ruleSet: true },
+      orderBy: [{ date: "asc" }, { slotIndex: "asc" }],
+    }),
+    prisma.attendance.findMany({
+      where: { staffId, date: { gte: attStart, lt: attEnd }, status: "LATE" },
+      include: { offenceReview: true },
+    }),
+  ]);
 
-  const counts: MonthOffenceCounts = { LATE_SUBMISSION: 0, MISSED_SUBMISSION: 0, FALSE_SUBMISSION: 0 };
+  const counts: MonthOffenceCounts = { LATE_CLOCK_IN: 0, LATE_SUBMISSION: 0, MISSED_SUBMISSION: 0, FALSE_SUBMISSION: 0 };
   const byDay: Record<string, { date: string; slots: TodaySlotView[] }> = {};
+  const offenceEvents: OffenceEvent[] = [];
 
   for (const r of records) {
     const config = r.ruleSet.config as unknown as RuleSetConfig;
@@ -158,9 +170,31 @@ export async function getMonthRecordsForStaff(staffId: string, monthStr: string,
     const lateClosesAt = lagosTimeOnDay(r.date, w.lateCloses);
     const status = deriveDisplayStatusAt(r, { opensAt, onTimeClosesAt, lateClosesAt }, now);
 
-    if (r.reviewStatus === "FALSE") counts.FALSE_SUBMISSION++;
-    else if (status === "MISSED") counts.MISSED_SUBMISSION++;
-    else if (status === "LATE") counts.LATE_SUBMISSION++;
+    if (r.reviewStatus === "FALSE") {
+      counts.FALSE_SUBMISSION++;
+      offenceEvents.push({
+        type: "FALSE_SUBMISSION",
+        ruleSetId: r.ruleSetId,
+        warningAllowance: config.warningAllowance.FALSE_SUBMISSION,
+        occurredAt: r.tickedAt ?? r.date,
+      });
+    } else if (status === "MISSED") {
+      counts.MISSED_SUBMISSION++;
+      offenceEvents.push({
+        type: "MISSED_SUBMISSION",
+        ruleSetId: r.ruleSetId,
+        warningAllowance: config.warningAllowance.MISSED_SUBMISSION,
+        occurredAt: lateClosesAt,
+      });
+    } else if (status === "LATE") {
+      counts.LATE_SUBMISSION++;
+      offenceEvents.push({
+        type: "LATE_SUBMISSION",
+        ruleSetId: r.ruleSetId,
+        warningAllowance: config.warningAllowance.LATE_SUBMISSION,
+        occurredAt: r.tickedAt ?? onTimeClosesAt,
+      });
+    }
 
     const dayKeyStr = r.date.toISOString();
     if (!byDay[dayKeyStr]) byDay[dayKeyStr] = { date: dayKeyStr, slots: [] };
@@ -178,5 +212,24 @@ export async function getMonthRecordsForStaff(staffId: string, monthStr: string,
     });
   }
 
-  return { days: Object.values(byDay), counts, monthStr: monthStr || lagosMonthStr(now) };
+  for (const a of lateAttendance) {
+    if (a.offenceReview) continue; // excused
+    const ruleSet = await getRuleSetAt(a.date);
+    if (!ruleSet) continue; // no rules in force on that date — nothing to attribute this to
+    const config = ruleSet.config as unknown as RuleSetConfig;
+    counts.LATE_CLOCK_IN++;
+    offenceEvents.push({
+      type: "LATE_CLOCK_IN",
+      ruleSetId: ruleSet.id,
+      warningAllowance: config.warningAllowance.LATE_CLOCK_IN,
+      occurredAt: a.clockIn ?? a.date,
+    });
+  }
+
+  return {
+    days: Object.values(byDay),
+    counts,
+    warnings: countWarnings(offenceEvents),
+    monthStr: monthStr || lagosMonthStr(now),
+  };
 }
