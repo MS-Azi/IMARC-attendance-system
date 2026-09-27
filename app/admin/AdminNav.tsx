@@ -11,6 +11,9 @@ const links = [
   { href: "/admin/staff", label: "Staff" },
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
+  ...(process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true"
+    ? [{ href: "/admin/worklog/rules", label: "Worklog Rules" }]
+    : []),
 ];
 
 export default function AdminNav() {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, JetBrains_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import ToastProvider from "./_components/ToastProvider";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -26,7 +27,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${mono.variable} ${body.variable}`}>
-      <body className="font-body min-h-screen">{children}</body>
+      <body className="font-body min-h-screen">
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }
