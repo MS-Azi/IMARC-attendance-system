@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 
-type ToastKind = "ok" | "error";
+type ToastKind = "ok" | "warning" | "error";
 type ToastMsg = { id: number; text: string; kind: ToastKind };
 
 const ToastContext = createContext<(text: string, kind?: ToastKind) => void>(() => {});
@@ -29,7 +29,7 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
           <div
             key={t.id}
             className={`glass rounded-card px-4 py-3 font-mono text-xs uppercase tracking-[0.12em] ${
-              t.kind === "ok" ? "text-good" : "text-bad"
+              t.kind === "ok" ? "text-good" : t.kind === "warning" ? "text-late" : "text-bad"
             }`}
           >
             {t.text}

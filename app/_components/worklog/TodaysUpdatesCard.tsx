@@ -121,7 +121,7 @@ export default function TodaysUpdatesCard() {
     }
 
     const late = data.record.outcome === "LATE";
-    toast(late ? "Submitted late. This counts as a late submission." : "Submitted on time.", late ? "error" : "ok");
+    toast(late ? "Submitted late. This counts as a late submission." : "Submitted on time.", late ? "warning" : "ok");
     setActive(null);
     load();
 
