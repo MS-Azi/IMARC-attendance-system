@@ -42,14 +42,21 @@ async function getActiveStaffWithEmail(): Promise<ActiveStaff[]> {
 }
 
 /** Step 1+2+3 of the cron: ensure today's records exist, send due-soon/now-late
- * reminders once each, and mark MISSED any slot whose late window has closed. */
-export async function runSlotReminders(now: Date = new Date()) {
+ * reminders once each, and mark MISSED any slot whose late window has closed.
+ * `deadline` (ms epoch) is checked once per staff member so a slow run stops
+ * starting new work instead of running past the cron's own time budget. */
+export async function runSlotReminders(now: Date = new Date(), deadline: number = Date.now() + 20000) {
   const staffList = await getActiveStaffWithEmail();
   let dueSoonSent = 0,
     nowLateSent = 0,
-    missedMarked = 0;
+    missedMarked = 0,
+    truncated = false;
 
   for (const staff of staffList) {
+    if (Date.now() > deadline) {
+      truncated = true;
+      break;
+    }
     const ensured = await ensureSlotRecordsForDate(staff.id, now, { allowFuture: false });
     if (!ensured) continue;
     const { config, dayKey } = ensured;
@@ -103,18 +110,23 @@ export async function runSlotReminders(now: Date = new Date()) {
     }
   }
 
-  return { dueSoonSent, nowLateSent, missedMarked };
+  return { dueSoonSent, nowLateSent, missedMarked, truncated };
 }
 
 /** Step 4: evaluate this month's offences per active staff member and send a
  * "warning issued" notice the first time a fresh offence lands within the warning
  * allowance. Idempotent per (staff, entity, type) via NotificationLog. */
-export async function runWarningNotices(now: Date = new Date()) {
+export async function runWarningNotices(now: Date = new Date(), deadline: number = Date.now() + 20000) {
   const staffList = await getActiveStaffWithEmail();
   const monthStr = lagosMonthStr(now);
   let sent = 0;
+  let truncated = false;
 
   for (const staff of staffList) {
+    if (Date.now() > deadline) {
+      truncated = true;
+      break;
+    }
     const [year, month] = monthStr.split("-").map(Number);
     const start = lagosDateKey(new Date(Date.UTC(year, month - 1, 1)));
     const end = lagosDateKey(new Date(Date.UTC(year, month, 1)));
@@ -177,7 +189,7 @@ export async function runWarningNotices(now: Date = new Date()) {
     }
   }
 
-  return { sent };
+  return { sent, truncated };
 }
 
 /** Called when a new rule-set version is published — pushes (or emails) every active

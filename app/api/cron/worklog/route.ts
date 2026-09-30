@@ -9,6 +9,8 @@ import { runSlotReminders, runWarningNotices } from "@/lib/worklog/notifications
  * retried run — including one that wakes a sleeping Free-tier instance mid-run — can't
  * double-send anything; it just re-checks and finds nothing new to do.
  */
+const RUN_BUDGET_MS = 20000;
+
 export async function POST(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -18,9 +20,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "worklog disabled" });
   }
 
-  const now = new Date();
-  const reminders = await runSlotReminders(now);
-  const warnings = await runWarningNotices(now);
+  const startedAt = Date.now();
+  const deadline = startedAt + RUN_BUDGET_MS;
+  console.log(`[cron/worklog] run started at ${new Date(startedAt).toISOString()}`);
 
-  return NextResponse.json({ ok: true, ...reminders, ...warnings });
+  try {
+    const now = new Date();
+    const reminders = await runSlotReminders(now, deadline);
+    const warnings = await runWarningNotices(now, deadline);
+
+    const durationMs = Date.now() - startedAt;
+    console.log(`[cron/worklog] run finished in ${durationMs}ms`, { ...reminders, ...warnings });
+    return NextResponse.json({ ok: true, durationMs, ...reminders, ...warnings });
+  } catch (err) {
+    const durationMs = Date.now() - startedAt;
+    console.error(`[cron/worklog] run failed after ${durationMs}ms`, err);
+    return NextResponse.json({ ok: false, durationMs, error: String(err) }, { status: 500 });
+  }
 }

@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { withTimeout } from "./worklog/timeout";
 
 /**
  * SMTP transport for the monthly report email.
@@ -14,18 +15,27 @@ export function getTransport() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    // Without these, a slow/unreachable SMTP host hangs the caller indefinitely —
+    // this is what was hanging the worklog cron.
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
   });
 }
 
 /** Plain notification email, no attachment — for worklog reminders/warnings. */
 export async function sendEmail(opts: { to: string; subject: string; html: string }) {
   const transport = getTransport();
-  await transport.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-  });
+  await withTimeout(
+    transport.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    }),
+    10000,
+    "sendEmail"
+  );
 }
 
 export async function sendReportEmail(opts: {

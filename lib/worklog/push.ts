@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/db";
+import { withTimeout } from "./timeout";
 
 let configured = false;
 function ensureConfigured() {
@@ -21,9 +22,13 @@ export async function sendPushToStaff(staffId: string, payload: { title: string;
   let sent = 0;
   for (const sub of subs) {
     try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload)
+      await withTimeout(
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify(payload)
+        ),
+        5000,
+        "push"
       );
       await prisma.pushSubscription.update({ where: { id: sub.id }, data: { lastSuccessAt: new Date() } });
       sent++;
