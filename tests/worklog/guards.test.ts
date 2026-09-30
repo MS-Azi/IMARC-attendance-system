@@ -17,7 +17,7 @@ function base(overrides: Partial<SlotCreationGuardInput> = {}): SlotCreationGuar
     weekday: 0,
     workingWeekdays: [1, 2, 3, 4, 5],
     isNonWorkingDay: false,
-    worklogStartDate: null,
+    worklogStartDate: d("2026-01-01"),
     staffDateJoined: d("2026-01-01"),
     allowFuture: false,
     ...overrides,
@@ -67,5 +67,9 @@ assert(r8.allowed, "future date allowed for bulk-excuse");
 console.log("\n[9] Today itself is never treated as 'future' (boundary is inclusive)");
 const r9 = checkSlotCreationGuards(base({ date: d("2026-09-28"), today: d("2026-09-28"), weekday: 1 }));
 assert(r9.allowed, "today is allowed even with allowFuture: false");
+
+console.log("\n[10] Fail-safe: worklogStartDate not configured (null) rejects everything, even an otherwise-valid day");
+const r10 = checkSlotCreationGuards(base({ date: d("2026-09-28"), today: d("2026-09-28"), weekday: 1, worklogStartDate: null }));
+assert(!r10.allowed, "null worklogStartDate rejected rather than treated as unrestricted");
 
 console.log("\nALL CHECKS PASSED");

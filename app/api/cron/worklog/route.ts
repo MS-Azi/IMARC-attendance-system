@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isWorklogEnabled } from "@/lib/worklog/flags";
 import { runSlotReminders, runWarningNotices } from "@/lib/worklog/notifications";
+import { prisma } from "@/lib/db";
 
 /**
  * Triggered every 5 minutes by an external scheduler (cron-job.org — this Render plan
@@ -18,6 +19,10 @@ export async function POST(req: NextRequest) {
   }
   if (!isWorklogEnabled()) {
     return NextResponse.json({ ok: true, skipped: "worklog disabled" });
+  }
+  const settings = await prisma.worklogSettings.findUnique({ where: { id: 1 } });
+  if (!settings?.startDate) {
+    return NextResponse.json({ ok: true, skipped: "worklog start date not configured" });
   }
 
   const startedAt = Date.now();

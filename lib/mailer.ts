@@ -7,10 +7,11 @@ import { withTimeout } from "./worklog/timeout";
  * (A Gmail account needs an "app password", not the normal login password.)
  */
 export function getTransport() {
+  const port = Number(process.env.SMTP_PORT || 587);
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
+    port,
+    secure: port === 465, // 465 = implicit TLS; 587 = STARTTLS (secure: false, upgraded automatically)
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,

@@ -16,6 +16,11 @@ async function assertMonthNotFinalized(date: Date) {
 }
 
 export async function getReviewBoardForDate(date: Date) {
+  const settings = await prisma.worklogSettings.findUnique({ where: { id: 1 } });
+  if (!settings?.startDate) {
+    return { rows: [], summary: { total: 0, onTime: 0, late: 0, missed: 0 }, notConfigured: true };
+  }
+
   const staffList = await prisma.staff.findMany({ where: { active: true }, orderBy: { fullName: "asc" } });
   const dayKey = lagosDateKey(date);
   const attDayKey = attendanceDayKey(date);

@@ -13,7 +13,7 @@ export type SlotCreationGuardInput = {
   weekday: number;
   workingWeekdays: number[];
   isNonWorkingDay: boolean;
-  /** dayKey, or null if not yet configured (no restriction). */
+  /** dayKey, or null if not yet configured — fail-safe: null blocks all creation. */
   worklogStartDate: Date | null;
   /** Staff.dateJoined. */
   staffDateJoined: Date;
@@ -31,7 +31,10 @@ export function checkSlotCreationGuards(input: SlotCreationGuardInput): GuardRes
   if (input.isNonWorkingDay) {
     return { allowed: false, reason: "Marked as a non-working day." };
   }
-  if (input.worklogStartDate && input.date.getTime() < input.worklogStartDate.getTime()) {
+  if (!input.worklogStartDate) {
+    return { allowed: false, reason: "Worklog start date is not configured yet." };
+  }
+  if (input.date.getTime() < input.worklogStartDate.getTime()) {
     return { allowed: false, reason: "Before the worklog start date." };
   }
   if (input.date.getTime() < input.staffDateJoined.getTime()) {
