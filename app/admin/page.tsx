@@ -15,14 +15,24 @@ type Rec = {
   staff: { fullName: string; department: string | null };
 };
 
+const BACKUP_REMINDER_DAYS = 30;
+
 export default function AdminLivePage() {
   const [records, setRecords] = useState<Rec[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     load();
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/backup/last")
+      .then((r) => r.json())
+      .then((d) => setLastBackupAt(d.lastBackupAt))
+      .catch(() => setLastBackupAt(null));
   }, []);
 
   async function load() {
@@ -36,10 +46,25 @@ export default function AdminLivePage() {
   const clockedIn = records.filter((r) => r.clockIn && !r.clockOut);
   const late = records.filter((r) => r.status === "LATE");
 
+  const daysSinceBackup = lastBackupAt ? (Date.now() - new Date(lastBackupAt).getTime()) / 86400000 : null;
+  const backupStale = lastBackupAt === null || (daysSinceBackup !== null && daysSinceBackup > BACKUP_REMINDER_DAYS);
+
   return (
     <div>
       <h1 className="font-display text-2xl font-bold uppercase tracking-tight mb-1 glow">Today</h1>
       <p className="font-mono text-muted text-[11px] uppercase tracking-[0.18em] mb-7">{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+
+      {lastBackupAt !== undefined && backupStale && (
+        <a
+          href="/admin/backup"
+          className="focus-ring glass rounded-card p-3.5 mb-7 flex items-center justify-between gap-3 block hover:bg-surface2 transition-colors"
+        >
+          <span className="font-mono text-late text-[11px] uppercase tracking-[0.1em]">
+            Last backup: {lastBackupAt ? new Date(lastBackupAt).toLocaleDateString() : "never"}. Download a fresh copy.
+          </span>
+          <span className="font-mono text-late text-[11px] uppercase tracking-[0.1em] underline shrink-0">Go →</span>
+        </a>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
         <Stat label="Currently in" value={clockedIn.length} live />

@@ -33,6 +33,7 @@ const groups: { label: string; links: { href: string; label: string }[] }[] = [
     label: "Setup",
     links: [
       ...(worklogOn ? [{ href: "/admin/worklog/rules", label: "Worklog Rules" }] : []),
+      { href: "/admin/backup", label: "Data Backup" },
       { href: "/admin/settings", label: "Settings" },
     ],
   },
