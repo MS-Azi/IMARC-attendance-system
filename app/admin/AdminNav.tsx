@@ -4,21 +4,38 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-const links = [
-  { href: "/admin", label: "Live" },
-  { href: "/admin/log", label: "Attendance Log" },
-  { href: "/admin/devices", label: "Device Review" },
-  { href: "/admin/staff", label: "Staff" },
-  { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/settings", label: "Settings" },
-  ...(process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true"
-    ? [
-        { href: "/admin/worklog", label: "Daily Review" },
-        { href: "/admin/worklog/payroll", label: "Worklog Payroll" },
-        { href: "/admin/worklog/rules", label: "Worklog Rules" },
-        { href: "/admin/worklog/log", label: "Worklog Change Log" },
-      ]
-    : []),
+const worklogOn = process.env.NEXT_PUBLIC_WORKLOG_ENABLED === "true";
+
+const groups: { label: string; links: { href: string; label: string }[] }[] = [
+  {
+    label: "Daily",
+    links: [
+      { href: "/admin", label: "Live" },
+      ...(worklogOn ? [{ href: "/admin/worklog", label: "Daily Review" }] : []),
+      { href: "/admin/log", label: "Attendance Log" },
+      { href: "/admin/devices", label: "Device Review" },
+    ],
+  },
+  {
+    label: "Records",
+    links: [
+      { href: "/admin/staff", label: "Staff" },
+      { href: "/admin/reports", label: "Reports" },
+      ...(worklogOn
+        ? [
+            { href: "/admin/worklog/payroll", label: "Worklog Payroll" },
+            { href: "/admin/worklog/log", label: "Worklog Change Log" },
+          ]
+        : []),
+    ],
+  },
+  {
+    label: "Setup",
+    links: [
+      ...(worklogOn ? [{ href: "/admin/worklog/rules", label: "Worklog Rules" }] : []),
+      { href: "/admin/settings", label: "Settings" },
+    ],
+  },
 ];
 
 export default function AdminNav() {
@@ -37,23 +54,30 @@ export default function AdminNav() {
   }
 
   const navLinks = (
-    <nav className="space-y-1">
-      {links.map((l) => {
-        const active = pathname === l.href;
-        return (
-          <Link
-            key={l.href}
-            href={l.href}
-            className={`block rounded-md px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] transition-colors ${
-              active
-                ? "bg-surface2 text-ink ring-1 ring-inset ring-[rgba(232,56,79,0.4)]"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            {l.label}
-          </Link>
-        );
-      })}
+    <nav className="space-y-4">
+      {groups.map((g) => (
+        <div key={g.label}>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted/70 px-3 pb-1.5">{g.label}</p>
+          <div className="space-y-1">
+            {g.links.map((l) => {
+              const active = pathname === l.href;
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`block rounded-md px-3 py-2 font-mono text-xs uppercase tracking-[0.12em] transition-colors ${
+                    active
+                      ? "bg-surface2 text-ink ring-1 ring-inset ring-[rgba(232,56,79,0.4)]"
+                      : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 

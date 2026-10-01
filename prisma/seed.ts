@@ -19,7 +19,7 @@ async function main() {
 
   await prisma.settings.upsert({
     where: { id: 1 },
-    create: { id: 1, officeLat: 0, officeLng: 0, radiusMeters: 100, lateThreshold: "08:21", reportEmail: "imarcprojects1@gmail.com" },
+    create: { id: 1, officeLat: 0, officeLng: 0, radiusMeters: 100, lateThreshold: "08:21" },
     update: {},
   });
 }

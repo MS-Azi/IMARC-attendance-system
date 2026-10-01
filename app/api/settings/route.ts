@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest) {
   if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "Admin only." }, { status: 401 });
   const body = await req.json();
   const data: any = {};
-  for (const k of ["officeLat", "officeLng", "radiusMeters", "lateThreshold", "reportEmail"]) {
+  for (const k of ["officeLat", "officeLng", "radiusMeters", "lateThreshold"]) {
     if (k in body) data[k] = body[k];
   }
   const settings = await prisma.settings.upsert({

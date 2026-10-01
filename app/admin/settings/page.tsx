@@ -7,7 +7,6 @@ type Settings = {
   officeLng: number;
   radiusMeters: number;
   lateThreshold: string;
-  reportEmail: string;
 };
 
 export default function SettingsPage() {
@@ -102,16 +101,6 @@ export default function SettingsPage() {
             className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm w-40"
           />
           <p className="font-mono text-[11px] text-muted mt-2 leading-relaxed">Clock-in at or after this time is marked Late.</p>
-        </div>
-
-        <div>
-          <label className="block font-mono text-[11px] uppercase tracking-[0.14em] text-ink mb-2">Monthly report recipient</label>
-          <input
-            type="email"
-            value={s.reportEmail}
-            onChange={(e) => setS({ ...s, reportEmail: e.target.value })}
-            className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm w-full sm:w-72"
-          />
         </div>
 
         <div className="flex items-center gap-4 pt-2">

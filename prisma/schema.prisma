@@ -84,14 +84,13 @@ model Settings {
   officeLng            Float
   radiusMeters         Int    @default(100)
   lateThreshold        String @default("08:21") // 24h HH:mm
-  reportEmail          String @default("imarcprojects1@gmail.com")
 }
 
 model MonthlyReport {
   id          String   @id @default(cuid())
-  periodLabel String   // e.g. "2026-08"
+  periodLabel String   @unique // e.g. "2026-08"
   generatedAt DateTime @default(now())
-  emailedTo   String
+  generatedBy String   // "cron" for the automatic monthly run, or the admin's name for on-demand generation
   summaryJson String   // serialized summary stats, for re-download without recompute
 }
 

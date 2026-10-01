@@ -77,21 +77,14 @@ function countWeekdays(start: Date, end: Date): number {
   return count;
 }
 
-export function summaryToHtml(s: MonthlySummary): string {
-  const rows = s.perStaff
-    .map(
-      (p) =>
-        `<tr><td>${p.name}</td><td>${p.department ?? "-"}</td><td>${p.onTime}</td><td>${p.late}</td><td>${p.absent}</td><td>${p.anomalies}</td><td>${p.attendancePct}%</td></tr>`
-    )
-    .join("");
-  return `
-    <h2>iMarc Attendance — Monthly Report: ${s.periodLabel}</h2>
-    <p>Overall attendance: <b>${s.overallAttendancePct}%</b> across ${s.totalStaff} staff.</p>
-    <p>Total late arrivals: ${s.totalLate} · Total absences: ${s.totalAbsent} · Flagged anomalies: ${s.totalAnomalies}</p>
-    <table border="1" cellpadding="6" cellspacing="0">
-      <tr><th>Staff</th><th>Department</th><th>On time</th><th>Late</th><th>Absent</th><th>Anomalies</th><th>Attendance %</th></tr>
-      ${rows}
-    </table>
-    <p>Full detail is attached as an Excel workbook.</p>
-  `;
+/** Builds the summary and stores/overwrites it as that period's MonthlyReport.
+ * `generatedBy` is "cron" for the automatic monthly run, or the admin's name when
+ * triggered on demand from the Reports page. */
+export async function generateAndStoreMonthlyReport(year: number, month: number, generatedBy: string) {
+  const summary = await buildMonthlySummary(year, month);
+  return prisma.monthlyReport.upsert({
+    where: { periodLabel: summary.periodLabel },
+    update: { generatedAt: new Date(), generatedBy, summaryJson: JSON.stringify(summary) },
+    create: { periodLabel: summary.periodLabel, generatedBy, summaryJson: JSON.stringify(summary) },
+  });
 }

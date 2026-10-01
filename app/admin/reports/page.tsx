@@ -25,24 +25,76 @@ type Report = {
   id: string;
   periodLabel: string;
   generatedAt: string;
-  emailedTo: string;
+  generatedBy: string;
   summaryJson: string;
 };
+
+function currentMonthValue() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [month, setMonth] = useState(currentMonthValue());
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/reports").then((r) => r.json()).then((d) => setReports(d.reports || []));
+    load();
   }, []);
+
+  function load() {
+    fetch("/api/reports").then((r) => r.json()).then((d) => setReports(d.reports || []));
+  }
+
+  async function generate() {
+    setGenerating(true);
+    setGenError(null);
+    const [year, m] = month.split("-").map(Number);
+    const res = await fetch("/api/reports/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year, month: m }),
+    });
+    const data = await res.json();
+    setGenerating(false);
+    if (!res.ok) {
+      setGenError(data.error || "Failed to generate report.");
+      return;
+    }
+    setExpanded(data.report.id);
+    load();
+  }
 
   return (
     <div>
       <h1 className="font-display text-2xl font-bold uppercase tracking-tight mb-1 glow">Monthly Reports</h1>
-      <p className="font-mono text-muted text-[11px] uppercase tracking-[0.16em] leading-relaxed mb-7">
-        Generated automatically on the 1st of each month. Email delivery may be unavailable — view or download each report here.
+      <p className="font-mono text-muted text-[11px] uppercase tracking-[0.16em] leading-relaxed mb-5">
+        Generated automatically on the 1st of each month, or generate any past month on demand.
       </p>
+
+      <div className="glass rounded-card p-4 mb-6 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.14em] text-ink mb-1.5">Month</label>
+          <input
+            type="month"
+            value={month}
+            max={currentMonthValue()}
+            onChange={(e) => setMonth(e.target.value)}
+            className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm"
+          />
+        </div>
+        <button
+          onClick={generate}
+          disabled={generating || !month}
+          className="focus-ring glow-box rounded-md bg-accent hover:bg-accentDim transition-colors px-4 py-2 font-mono text-xs uppercase tracking-[0.15em] font-medium text-white disabled:opacity-60"
+        >
+          {generating ? "Generating…" : "Generate report"}
+        </button>
+        {genError && <p className="font-mono text-bad text-xs">{genError}</p>}
+      </div>
 
       <div className="relative">
         <div className="glass rounded-card overflow-x-auto">
@@ -63,7 +115,9 @@ export default function ReportsPage() {
                   <>
                     <tr key={r.id} className="border-b border-border last:border-0">
                       <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{r.periodLabel}</td>
-                      <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums text-muted">{new Date(r.generatedAt).toLocaleDateString()}</td>
+                      <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums text-muted">
+                        {new Date(r.generatedAt).toLocaleDateString()} <span className="text-[10px]">· {r.generatedBy}</span>
+                      </td>
                       <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{summary.overallAttendancePct}%</td>
                       <td className="px-3 py-2.5 md:px-5 md:py-3 whitespace-nowrap">
                         <button

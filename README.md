@@ -3,7 +3,8 @@
 A GPS-verified staff attendance web app for iMarcProjects. Staff clock in/out from
 their own phone; the system checks their location against a fixed office geofence.
 Admin gets a live dashboard, an editable attendance log, on-demand Excel export, and
-an automatic monthly report emailed to imarcprojects1@gmail.com.
+a monthly report (auto-generated on the 1st, or generated on demand for any past
+month) viewable and downloadable from the admin Reports page.
 
 Built per the PRD: single-phase build, one office location, browser GPS, manual staff
 entry, Next.js + Postgres (Supabase), hosted on Render.
@@ -54,9 +55,6 @@ or an API ping).
 5. **Set environment variables** on the Web Service (Render → Environment):
    - `DATABASE_URL`, `DIRECT_URL` — the two Supabase connection strings from step 3
    - `AUTH_SECRET` — any long random string
-   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — for
-     imarcprojects1@gmail.com, use a Gmail **app password**, not the normal
-     account password (Google Account → Security → App passwords)
    - `CRON_SECRET` — any long random string, must match the cron job below
    - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` — only needed for the one-time seed
 
@@ -80,7 +78,8 @@ or an API ping).
    you're testing from), set the radius, and confirm the late threshold (defaults
    to 08:21, per the PRD).
 
-8. **Create the monthly report Cron Job.** Render Dashboard → New → Cron Job:
+8. **Create the monthly report Cron Job** (optional — a report for any past month can
+   also be generated on demand from the admin Reports page). Render Dashboard → New → Cron Job:
    - Command: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<your-app>.onrender.com/api/reports/monthly`
    - Schedule: `0 6 1 * *` (6am on the 1st of every month — adjust timezone as needed)
    - Environment variable: `CRON_SECRET` set to the same value as on the Web Service

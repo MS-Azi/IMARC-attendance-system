@@ -95,33 +95,3 @@ export async function computeMonthPayroll(monthStr: string): Promise<StaffPayrol
   }
   return lines;
 }
-
-/** HTML snippet for the "Work Log & Deductions" section of the existing monthly
- * report email — spliced in additively, never replacing the attendance content. */
-export async function buildWorklogReportSection(monthStr: string): Promise<string> {
-  const payrollMonth = await prisma.payrollMonth.findUnique({ where: { month: monthStr } });
-  const lines = await computeMonthPayroll(monthStr);
-  if (lines.length === 0) return "";
-
-  const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString()}`;
-  const capped = lines.filter((l) => l.breakdown.capped);
-  const anyWarningOnly = lines.some((l) => !l.deductionsEnabled);
-
-  const rows = lines
-    .map(
-      (l) =>
-        `<tr><td>${l.staffName}</td><td>${naira(l.baseKobo)}</td><td>${naira(l.breakdown.totalDeductionKobo)}</td><td>${naira(l.breakdown.netKobo)}</td><td>${l.breakdown.capped ? "YES" : ""}</td></tr>`
-    )
-    .join("");
-
-  return `
-    <h2>Work Log &amp; Deductions — ${monthStr}</h2>
-    <p>${payrollMonth?.finalizedAt ? "Finalized." : "<b>Not yet finalized</b> — figures are provisional."}
-       ${anyWarningOnly ? " Some or all deductions are in <b>warning-only mode</b> (figures shown are \"would have been\")." : ""}</p>
-    <table border="1" cellpadding="6" cellspacing="0">
-      <tr><th>Staff</th><th>Base</th><th>Deduction</th><th>Net</th><th>Hit cap</th></tr>
-      ${rows}
-    </table>
-    ${capped.length > 0 ? `<p>Hit the cap: ${capped.map((l) => l.staffName).join(", ")}.</p>` : ""}
-  `;
-}
