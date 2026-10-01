@@ -84,12 +84,18 @@ model Settings {
   officeLng            Float
   radiusMeters         Int    @default(100)
   lateThreshold        String @default("08:21") // 24h HH:mm
+  /// @deprecated unused since email delivery was removed — kept (with its existing
+  /// default) so no existing column is dropped.
+  reportEmail          String @default("imarcprojects1@gmail.com")
 }
 
 model MonthlyReport {
   id          String   @id @default(cuid())
   periodLabel String   @unique // e.g. "2026-08"
   generatedAt DateTime @default(now())
+  /// @deprecated unused since email delivery was removed — kept nullable so no existing
+  /// column is dropped; new rows never set this.
+  emailedTo   String?
   generatedBy String   // "cron" for the automatic monthly run, or the admin's name for on-demand generation
   summaryJson String   // serialized summary stats, for re-download without recompute
 }

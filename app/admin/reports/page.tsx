@@ -52,20 +52,25 @@ export default function ReportsPage() {
   async function generate() {
     setGenerating(true);
     setGenError(null);
-    const [year, m] = month.split("-").map(Number);
-    const res = await fetch("/api/reports/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ year, month: m }),
-    });
-    const data = await res.json();
-    setGenerating(false);
-    if (!res.ok) {
-      setGenError(data.error || "Failed to generate report.");
-      return;
+    try {
+      const [year, m] = month.split("-").map(Number);
+      const res = await fetch("/api/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, month: m }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setGenError(data?.error || `Failed to generate report (${res.status}).`);
+        return;
+      }
+      setExpanded(data.report.id);
+      load();
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : "Failed to generate report.");
+    } finally {
+      setGenerating(false);
     }
-    setExpanded(data.report.id);
-    load();
   }
 
   return (
