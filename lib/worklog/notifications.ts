@@ -6,38 +6,29 @@ import { ensureSlotRecordsForDate, lagosTimeOnDay } from "./slots";
 import { lagosDateKey, lagosMonthStr } from "./lagos";
 import { OffenceEvent, categorizeOffences } from "./deductions";
 import { sendPushToStaff } from "./push";
-import { sendEmail } from "@/lib/mailer";
 
 /** Records a send attempt; returns false (and does nothing else) if this exact
  * (staff, slot/entity, type) combination was already sent — the unique constraint on
  * dedupeKey is what actually enforces it, this just makes the check-then-send atomic
  * enough for a 5-minute cron that might occasionally overlap itself. */
-async function logIfNew(dedupeKey: string, staffId: string, slotRecordId: string | null, type: string, channel: "PUSH" | "EMAIL") {
+async function logIfNew(dedupeKey: string, staffId: string, slotRecordId: string | null, type: string) {
   try {
-    await prisma.notificationLog.create({ data: { staffId, slotRecordId, type, channel, dedupeKey } });
+    await prisma.notificationLog.create({ data: { staffId, slotRecordId, type, channel: "PUSH", dedupeKey } });
     return true;
   } catch {
     return false; // unique constraint hit — already sent
   }
 }
 
-async function notify(staffId: string, title: string, body: string, url: string, emailFallback: { subject: string; to: string } | null) {
-  const subs = await prisma.pushSubscription.count({ where: { staffId } });
-  if (subs > 0) {
-    await sendPushToStaff(staffId, { title, body, url }).catch(() => {});
-    return "PUSH" as const;
-  }
-  // loginId is "phone or email" (Staff model) — only attempt email if it actually looks like one.
-  if (emailFallback && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFallback.to)) {
-    await sendEmail({ to: emailFallback.to, subject: emailFallback.subject, html: `<p>${body}</p>` }).catch(() => {});
-    return "EMAIL" as const;
-  }
-  return "PUSH" as const; // nothing to send to, but still log so we don't retry forever
+/** Push only — no email fallback. A staff member with no push subscription simply
+ * doesn't get this notification; it's still logged so the cron doesn't retry forever. */
+async function notify(staffId: string, title: string, body: string, url: string) {
+  await sendPushToStaff(staffId, { title, body, url }).catch(() => {});
 }
 
 type ActiveStaff = { id: string; fullName: string; loginId: string; dateJoined: Date };
 
-async function getActiveStaffWithEmail(): Promise<ActiveStaff[]> {
+async function getActiveStaff(): Promise<ActiveStaff[]> {
   return prisma.staff.findMany({ where: { active: true }, select: { id: true, fullName: true, loginId: true, dateJoined: true } });
 }
 
@@ -46,7 +37,7 @@ async function getActiveStaffWithEmail(): Promise<ActiveStaff[]> {
  * `deadline` (ms epoch) is checked once per staff member so a slow run stops
  * starting new work instead of running past the cron's own time budget. */
 export async function runSlotReminders(now: Date = new Date(), deadline: number = Date.now() + 20000) {
-  const staffList = await getActiveStaffWithEmail();
+  const staffList = await getActiveStaff();
   let dueSoonSent = 0,
     nowLateSent = 0,
     missedMarked = 0,
@@ -75,30 +66,16 @@ export async function runSlotReminders(now: Date = new Date(), deadline: number 
 
       if (r.outcome === "PENDING") {
         if (now >= dueSoonInstant && now < onTimeClosesAt) {
-          const sent = await logIfNew(`${staff.id}:${r.id}:DUE_SOON`, staff.id, r.id, "DUE_SOON", "PUSH");
+          const sent = await logIfNew(`${staff.id}:${r.id}:DUE_SOON`, staff.id, r.id, "DUE_SOON");
           if (sent) {
-            const channel = await notify(
-              staff.id,
-              "Update due soon",
-              `Your ${r.slotLabel} update is due soon.`,
-              "/clock",
-              { subject: "Update due soon", to: staff.loginId } // notify() only actually emails if there's no push subscription
-            );
-            await prisma.notificationLog.updateMany({ where: { dedupeKey: `${staff.id}:${r.id}:DUE_SOON` }, data: { channel } });
+            await notify(staff.id, "Update due soon", `Your ${r.slotLabel} update is due soon.`, "/clock");
             dueSoonSent++;
           }
         }
         if (now >= onTimeClosesAt && now < lateClosesAt) {
-          const sent = await logIfNew(`${staff.id}:${r.id}:NOW_LATE`, staff.id, r.id, "NOW_LATE", "PUSH");
+          const sent = await logIfNew(`${staff.id}:${r.id}:NOW_LATE`, staff.id, r.id, "NOW_LATE");
           if (sent) {
-            const channel = await notify(
-              staff.id,
-              "Update now late",
-              `Your ${r.slotLabel} update is now late.`,
-              "/clock",
-              config.emailOnLate ? { subject: "Update now late", to: staff.loginId } : null
-            );
-            await prisma.notificationLog.updateMany({ where: { dedupeKey: `${staff.id}:${r.id}:NOW_LATE` }, data: { channel } });
+            await notify(staff.id, "Update now late", `Your ${r.slotLabel} update is now late.`, "/clock");
             nowLateSent++;
           }
         }
@@ -117,7 +94,7 @@ export async function runSlotReminders(now: Date = new Date(), deadline: number 
  * "warning issued" notice the first time a fresh offence lands within the warning
  * allowance. Idempotent per (staff, entity, type) via NotificationLog. */
 export async function runWarningNotices(now: Date = new Date(), deadline: number = Date.now() + 20000) {
-  const staffList = await getActiveStaffWithEmail();
+  const staffList = await getActiveStaff();
   const monthStr = lagosMonthStr(now);
   let sent = 0;
   let truncated = false;
@@ -175,16 +152,14 @@ export async function runWarningNotices(now: Date = new Date(), deadline: number
     for (const c of categorized) {
       if (!c.isWarning) continue;
       const dedupeKey = `${staff.id}:${c.entityId}:WARNING`;
-      const logged = await logIfNew(dedupeKey, staff.id, null, "WARNING", "PUSH");
+      const logged = await logIfNew(dedupeKey, staff.id, null, "WARNING");
       if (!logged) continue;
-      const channel = await notify(
+      await notify(
         staff.id,
         "Warning issued",
         `Warning ${c.ordinal} of ${c.warningAllowance} for ${c.type.replace(/_/g, " ").toLowerCase()} this month. Further offences may attract deductions.`,
-        "/worklog/me",
-        { subject: "Warning issued", to: staff.loginId }
+        "/worklog/me"
       );
-      await prisma.notificationLog.updateMany({ where: { dedupeKey }, data: { channel } });
       sent++;
     }
   }
@@ -192,24 +167,17 @@ export async function runWarningNotices(now: Date = new Date(), deadline: number
   return { sent, truncated };
 }
 
-/** Called when a new rule-set version is published — pushes (or emails) every active
- * staff member once. Not part of the cron; called directly from the rules API route. */
+/** Called when a new rule-set version is published — pushes every active staff
+ * member once. Not part of the cron; called directly from the rules API route. */
 export async function notifyRulesChanged(effectiveFrom: Date) {
-  const staffList = await getActiveStaffWithEmail();
+  const staffList = await getActiveStaff();
   const dateStr = effectiveFrom.toISOString().slice(0, 10);
   let sent = 0;
   for (const staff of staffList) {
     const dedupeKey = `${staff.id}:rules-${effectiveFrom.getTime()}:RULES_CHANGED`;
-    const logged = await logIfNew(dedupeKey, staff.id, null, "RULES_CHANGED", "PUSH");
+    const logged = await logIfNew(dedupeKey, staff.id, null, "RULES_CHANGED");
     if (!logged) continue;
-    const channel = await notify(
-      staff.id,
-      "Work update rules have changed",
-      `Effective ${dateStr}. Open the app to review and acknowledge.`,
-      "/worklog/rules",
-      { subject: "Work update rules have changed", to: staff.loginId }
-    );
-    await prisma.notificationLog.updateMany({ where: { dedupeKey }, data: { channel } });
+    await notify(staff.id, "Work update rules have changed", `Effective ${dateStr}. Open the app to review and acknowledge.`, "/worklog/rules");
     sent++;
   }
   return { sent };

@@ -61,7 +61,6 @@ async function main() {
         lastSlotLateCloseTime: "17:45",
         workingWeekdays: [0, 1, 2, 3, 4, 5, 6],
         reminderMinsBefore: 15,
-        emailOnLate: true,
         whatsappMode: "GROUP",
         adminWhatsappNumber: null,
         deductionsEnabled: false,

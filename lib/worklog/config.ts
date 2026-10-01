@@ -32,7 +32,6 @@ export type RuleSetConfig = {
   lastSlotLateCloseTime: string; // "HH:mm", Lagos
   workingWeekdays: number[]; // 0 = Sunday .. 6 = Saturday
   reminderMinsBefore: number;
-  emailOnLate: boolean;
   whatsappMode: WhatsappMode;
   adminWhatsappNumber: string | null; // required when whatsappMode === "DIRECT"
   deductionsEnabled: boolean;
@@ -59,7 +58,6 @@ export function defaultRuleSetConfig(): RuleSetConfig {
     lastSlotLateCloseTime: "17:45",
     workingWeekdays: [1, 2, 3, 4, 5],
     reminderMinsBefore: 15,
-    emailOnLate: true,
     // GROUP needs no pre-entered number, so the unconfigured default validates cleanly;
     // the admin can switch to DIRECT once they've entered a number.
     whatsappMode: "GROUP",

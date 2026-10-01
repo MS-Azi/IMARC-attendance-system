@@ -366,10 +366,6 @@ export default function RulesPageClient() {
             className="focus-ring w-24 rounded-md bg-surface2 border border-border px-2 py-1.5 text-sm"
           />
         </Field>
-        <label className="flex items-center gap-2 font-mono text-xs mt-3">
-          <input type="checkbox" checked={config.emailOnLate} onChange={(e) => patch({ emailOnLate: e.target.checked })} />
-          Email on late (in addition to push)
-        </label>
       </Section>
 
       {/* WhatsApp handoff */}

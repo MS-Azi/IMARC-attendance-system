@@ -55,6 +55,7 @@ export default function TodaysUpdatesCard() {
   const [link, setLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -114,7 +115,10 @@ export default function TodaysUpdatesCard() {
     if (whatsapp) {
       const message = buildWhatsAppMessage(data.slotLabel, staffFirstName, note.trim(), link.trim() || null);
       const url = buildWhatsAppUrl(whatsapp, message);
+      // iOS Safari can block this (it's not a direct tap gesture, since it runs after
+      // an awaited fetch) — the visible button below is the fallback for that case.
       window.open(url, "_blank");
+      setWhatsappUrl(url);
     }
   }
 
@@ -165,6 +169,21 @@ export default function TodaysUpdatesCard() {
           })}
         </div>
       </div>
+
+      {whatsappUrl && (
+        <div className="tilt glass relative rounded-card p-4 w-full max-w-sm mt-3 flex items-center justify-between gap-3">
+          <p className="font-mono text-[11px] text-muted">Didn't open WhatsApp automatically?</p>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setWhatsappUrl(null)}
+            className="focus-ring glow-box shrink-0 rounded-md bg-accent hover:bg-accentDim transition-colors px-3 py-2 font-mono text-xs uppercase tracking-[0.15em] font-medium text-white"
+          >
+            Open WhatsApp
+          </a>
+        </div>
+      )}
 
       <Modal open={!!active} onClose={() => setActive(null)} title={active ? `${active.label} Update` : ""}>
         <form onSubmit={submit} className="space-y-3">
