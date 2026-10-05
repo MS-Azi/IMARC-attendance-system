@@ -15,7 +15,16 @@ export async function GET() {
   if (!isWorklogEnabled()) return NextResponse.json({ error: "Worklog module is disabled." }, { status: 404 });
   if (!(await requireAdmin())) return NextResponse.json({ error: "Admin only." }, { status: 401 });
   const settings = await prisma.worklogSettings.findUnique({ where: { id: 1 } });
-  return NextResponse.json({ startDate: settings?.startDate ?? null });
+
+  const staff = await prisma.staff.findMany({ where: { active: true }, select: { id: true } });
+  const withComp = await prisma.staffCompensation.findMany({
+    where: { staffId: { in: staff.map((s) => s.id) } },
+    select: { staffId: true },
+    distinct: ["staffId"],
+  });
+  const staffWithoutCompensation = staff.length - withComp.length;
+
+  return NextResponse.json({ startDate: settings?.startDate ?? null, staffWithoutCompensation });
 }
 
 export async function POST(req: NextRequest) {

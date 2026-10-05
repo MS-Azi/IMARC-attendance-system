@@ -30,6 +30,7 @@ type RuleSet = {
   overrideReason: string | null;
   createdAt: string;
   createdBy?: { email: string };
+  supersededAt: string | null;
 };
 
 type NonWorkingDay = { id: string; date: string; reason: string };
@@ -50,6 +51,7 @@ export default function RulesPageClient() {
   const [newDay, setNewDay] = useState({ date: "", reason: "" });
   const [startDate, setStartDate] = useState("");
   const [startDateSaving, setStartDateSaving] = useState(false);
+  const [staffWithoutCompensation, setStaffWithoutCompensation] = useState(0);
 
   useEffect(() => {
     load();
@@ -71,6 +73,7 @@ export default function RulesPageClient() {
     setHistory(rulesData.history || []);
     setDays(daysData.days || []);
     setStartDate(settingsData.startDate ? settingsData.startDate.slice(0, 10) : "");
+    setStaffWithoutCompensation(settingsData.staffWithoutCompensation || 0);
     setLoading(false);
   }
 
@@ -178,10 +181,26 @@ export default function RulesPageClient() {
         </p>
       </div>
 
+      {!startDate && (
+        <div className="glass rounded-card p-4 border border-late/40">
+          <p className="font-mono text-late text-[11px] uppercase tracking-[0.1em]">
+            Work log is not running: start date not set. Set it below to activate Daily Review and reminders.
+          </p>
+        </div>
+      )}
+      {staffWithoutCompensation > 0 && (
+        <a href="/admin/staff" className="focus-ring glass rounded-card p-4 border border-late/40 block hover:bg-surface2 transition-colors">
+          <p className="font-mono text-late text-[11px] uppercase tracking-[0.1em]">
+            {staffWithoutCompensation} staff have no salary on file — deductions can't be calculated for them. Fix it →
+          </p>
+        </a>
+      )}
+
       <Section title="Worklog start date">
         <p className="font-mono text-[11px] text-muted mb-3">
           No slot records are ever auto-generated before this date, even if rules are already published — protects
-          historical data from before the module went live. Leave blank for no restriction.
+          historical data from before the module went live. <b className="text-late">Required</b> — while blank, the
+          worklog is not running at all (Daily Review stays empty and no reminders go out).
         </p>
         <div className="flex items-end gap-2">
           <input
@@ -529,9 +548,10 @@ export default function RulesPageClient() {
         {history.length === 0 && <p className="font-mono text-[11px] text-muted">No versions published yet.</p>}
         {history.map((v) => (
           <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] py-1.5 border-b border-border last:border-0">
-            <span>
+            <span className={v.supersededAt ? "text-muted line-through" : ""}>
               v{v.version} · effective {fmtDate(v.effectiveFrom)}
               {v.appliedImmediately ? " (applied immediately)" : ""} · {v.createdBy?.email ?? "—"}
+              {v.supersededAt ? " · superseded" : ""}
             </span>
           </div>
         ))}

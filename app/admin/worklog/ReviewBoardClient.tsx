@@ -26,7 +26,7 @@ type Row = {
   attendanceId: string | null;
   slots: Slot[];
 };
-type Board = { rows: Row[]; summary: { total: number; onTime: number; late: number; missed: number } };
+type Board = { rows: Row[]; summary: { total: number; onTime: number; late: number; missed: number }; notConfigured?: boolean };
 
 const STATUS_COLOR: Record<string, string> = {
   UPCOMING: "text-muted",
@@ -57,16 +57,24 @@ export default function ReviewBoardClient() {
 
   const [bulk, setBulk] = useState({ staffId: "", from: "", to: "", reason: "" });
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [staffWithoutCompensation, setStaffWithoutCompensation] = useState(0);
 
   useEffect(() => {
     load();
   }, [date]);
 
+  useEffect(() => {
+    fetch("/api/admin/worklog/settings")
+      .then((r) => r.json())
+      .then((d) => setStaffWithoutCompensation(d.staffWithoutCompensation || 0))
+      .catch(() => {});
+  }, []);
+
   async function load() {
     setLoading(true);
     const res = await fetch(`/api/admin/worklog/review?date=${date}`);
     const data = await res.json();
-    setBoard(data.rows ? data : null);
+    setBoard(Array.isArray(data.rows) ? data : null);
     setLoading(false);
   }
 
@@ -172,6 +180,24 @@ export default function ReviewBoardClient() {
 
   return (
     <div>
+      {board?.notConfigured && (
+        <div className="glass rounded-card p-4 mb-6 border border-late/40">
+          <p className="font-mono text-late text-[11px] uppercase tracking-[0.1em]">
+            Work log is not running: start date not set.{" "}
+            <a href="/admin/worklog/rules" className="underline">
+              Fix it →
+            </a>
+          </p>
+        </div>
+      )}
+      {staffWithoutCompensation > 0 && (
+        <a href="/admin/staff" className="focus-ring glass rounded-card p-4 mb-6 border border-late/40 block hover:bg-surface2 transition-colors">
+          <p className="font-mono text-late text-[11px] uppercase tracking-[0.1em]">
+            {staffWithoutCompensation} staff have no salary on file. Fix it →
+          </p>
+        </a>
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="font-display text-2xl font-bold uppercase tracking-tight mb-1">Daily Review</h1>
@@ -214,7 +240,11 @@ export default function ReviewBoardClient() {
               {!loading && visibleRows.length === 0 && (
                 <tr>
                   <td colSpan={2 + slotLabels.length} className="px-3 py-8 md:px-5 text-center text-muted">
-                    {board ? "Nothing to show." : "No rules published for this date."}
+                    {board?.notConfigured
+                      ? "Work log is not running — see above."
+                      : board
+                      ? "Nothing to show."
+                      : "No rules published for this date."}
                   </td>
                 </tr>
               )}

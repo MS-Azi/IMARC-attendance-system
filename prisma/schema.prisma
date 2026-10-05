@@ -128,6 +128,10 @@ model WorklogRuleSet {
   createdById        String
   createdBy          Admin    @relation(fields: [createdById], references: [id])
   createdAt          DateTime @default(now())
+  // Set when a later version is published while this one hasn't taken effect yet,
+  // so it can never resurface and override the newer version once its own
+  // effectiveFrom date arrives. Kept (never deleted) for history.
+  supersededAt       DateTime?
 
   slotRecords      SlotRecord[]
   acknowledgements RuleAcknowledgement[]
