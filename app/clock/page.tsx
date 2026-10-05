@@ -18,6 +18,18 @@ type Record = {
   status: string;
 } | null;
 
+type LocationErrorType = "denied" | "unavailable" | "timeout";
+
+function getPosition(options: PositionOptions): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, options));
+}
+
+function classifyGeoError(err: GeolocationPositionError): LocationErrorType {
+  if (err.code === err.PERMISSION_DENIED) return "denied";
+  if (err.code === err.TIMEOUT) return "timeout";
+  return "unavailable";
+}
+
 export default function ClockPage() {
   const router = useRouter();
   const [record, setRecord] = useState<Record>(null);
@@ -40,11 +52,17 @@ export default function ClockPage() {
     setWorkMode(data.workMode || "OFFICE");
   }
 
-  async function submit(action: "IN" | "OUT", lat: number | null, lng: number | null, accuracy: number | null) {
+  async function submit(
+    action: "IN" | "OUT",
+    lat: number | null,
+    lng: number | null,
+    accuracy: number | null,
+    locationError: LocationErrorType | null
+  ) {
     const res = await fetch("/api/clock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, lat, lng, accuracy, deviceId: getDeviceId() }),
+      body: JSON.stringify({ action, lat, lng, accuracy, locationError, deviceId: getDeviceId() }),
     });
     const data = await res.json();
     setBusy(false);
@@ -59,27 +77,48 @@ export default function ClockPage() {
     refresh();
   }
 
+  /** REMOTE only: a real GPS fix, then one lower-accuracy retry, before giving up.
+   * Never blocks the clock-in — whatever happens, it still submits. */
+  async function actRemote(action: "IN" | "OUT") {
+    try {
+      const pos = await getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+      submit(action, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, null);
+      return;
+    } catch (err) {
+      const type = classifyGeoError(err as GeolocationPositionError);
+      if (type === "denied") {
+        submit(action, null, null, null, type);
+        return;
+      }
+    }
+    try {
+      const pos = await getPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+      submit(action, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, null);
+    } catch (err) {
+      submit(action, null, null, null, classifyGeoError(err as GeolocationPositionError));
+    }
+  }
+
   function act(action: "IN" | "OUT") {
     setBusy(true);
     setMessage(null);
     if (!navigator.geolocation) {
       if (workMode === "REMOTE") {
-        submit(action, null, null, null);
+        submit(action, null, null, null, "unavailable");
         return;
       }
       setBusy(false);
       setMessage({ text: "This device doesn't support location access.", kind: "error" });
       return;
     }
+    if (workMode === "REMOTE") {
+      actRemote(action);
+      return;
+    }
+    // OFFICE — unchanged from before REMOTE work mode existed.
     navigator.geolocation.getCurrentPosition(
-      (pos) => submit(action, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+      (pos) => submit(action, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, null),
       () => {
-        // REMOTE staff clock in anyway when location is denied/unavailable — the
-        // server marks the record "location not shared" rather than rejecting it.
-        if (workMode === "REMOTE") {
-          submit(action, null, null, null);
-          return;
-        }
         setBusy(false);
         setMessage({ text: "Location access was denied. Allow location and try again.", kind: "error" });
       },
@@ -158,7 +197,7 @@ export default function ClockPage() {
             className="focus-ring glow-box relative w-full rounded-md bg-accent hover:bg-accentDim transition-colors py-4 font-mono text-sm uppercase tracking-[0.2em] font-medium text-white disabled:opacity-60"
           >
             <CornerBrackets />
-            {busy ? "Locating…" : "Clock In"}
+            {busy ? (workMode === "REMOTE" ? "Getting your location…" : "Locating…") : "Clock In"}
           </button>
         )}
         {hasClockedIn && !hasClockedOut && (
@@ -168,7 +207,7 @@ export default function ClockPage() {
             className="focus-ring relative w-full rounded-md bg-surface2 border border-border hover:border-accent transition-colors py-4 font-mono text-sm uppercase tracking-[0.2em] font-medium disabled:opacity-60"
           >
             <CornerBrackets />
-            {busy ? "Locating…" : "Clock Out"}
+            {busy ? (workMode === "REMOTE" ? "Getting your location…" : "Locating…") : "Clock Out"}
           </button>
         )}
         {hasClockedIn && hasClockedOut && (

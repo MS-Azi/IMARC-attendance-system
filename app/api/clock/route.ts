@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sign in as a staff member first." }, { status: 401 });
   }
 
-  const { action, lat, lng, accuracy, deviceId } = await req.json();
+  const { action, lat, lng, accuracy, locationError, deviceId } = await req.json();
   const staff = await prisma.staff.findUnique({ where: { id: session.sub }, select: { workMode: true } });
   if (!staff) {
     return NextResponse.json({ error: "Staff record not found." }, { status: 404 });
@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
   });
   if (!location.allowed) {
     return NextResponse.json({ error: location.error }, { status: location.status });
+  }
+  // Not stored anywhere — logged only, so a "location not shared" remote clock-in
+  // can be diagnosed from Render logs without any schema change.
+  if (!location.locationShared && typeof locationError === "string") {
+    console.log(`[clock] staff=${session.sub} action=${action} remote location not captured: ${locationError}`);
   }
   const recordedLat = location.locationShared ? lat : null;
   const recordedLng = location.locationShared ? lng : null;
