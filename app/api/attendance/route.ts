@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
   const staffId = searchParams.get("staffId");
   const status = searchParams.get("status");
+  const workMode = searchParams.get("workMode");
 
   const where: any = {};
   if (from || to) {
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
   }
   if (staffId) where.staffId = staffId;
   if (status) where.status = status;
+  if (workMode === "OFFICE" || workMode === "REMOTE") where.staff = { workMode };
 
   const records = await prisma.attendance.findMany({
     where,

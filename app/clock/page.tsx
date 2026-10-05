@@ -21,6 +21,7 @@ type Record = {
 export default function ClockPage() {
   const router = useRouter();
   const [record, setRecord] = useState<Record>(null);
+  const [workMode, setWorkMode] = useState<"OFFICE" | "REMOTE">("OFFICE");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; kind: "ok" | "error" } | null>(null);
   const [now, setNow] = useState(new Date());
@@ -36,41 +37,49 @@ export default function ClockPage() {
     if (res.status === 401) return router.push("/login");
     const data = await res.json();
     setRecord(data.record);
+    setWorkMode(data.workMode || "OFFICE");
+  }
+
+  async function submit(action: "IN" | "OUT", lat: number | null, lng: number | null, accuracy: number | null) {
+    const res = await fetch("/api/clock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, lat, lng, accuracy, deviceId: getDeviceId() }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setMessage({ text: data.error, kind: "error" });
+      return;
+    }
+    setMessage({
+      text: action === "IN" ? "Clocked in." : "Clocked out.",
+      kind: "ok",
+    });
+    refresh();
   }
 
   function act(action: "IN" | "OUT") {
     setBusy(true);
     setMessage(null);
     if (!navigator.geolocation) {
+      if (workMode === "REMOTE") {
+        submit(action, null, null, null);
+        return;
+      }
       setBusy(false);
       setMessage({ text: "This device doesn't support location access.", kind: "error" });
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const res = await fetch("/api/clock", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            deviceId: getDeviceId(),
-          }),
-        });
-        const data = await res.json();
-        setBusy(false);
-        if (!res.ok) {
-          setMessage({ text: data.error, kind: "error" });
+      (pos) => submit(action, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+      () => {
+        // REMOTE staff clock in anyway when location is denied/unavailable — the
+        // server marks the record "location not shared" rather than rejecting it.
+        if (workMode === "REMOTE") {
+          submit(action, null, null, null);
           return;
         }
-        setMessage({
-          text: action === "IN" ? "Clocked in." : "Clocked out.",
-          kind: "ok",
-        });
-        refresh();
-      },
-      () => {
         setBusy(false);
         setMessage({ text: "Location access was denied. Allow location and try again.", kind: "error" });
       },
@@ -135,6 +144,12 @@ export default function ClockPage() {
             <p className="font-mono text-late text-[11px] uppercase tracking-[0.15em] mt-1.5">Marked late</p>
           )}
         </div>
+
+        {workMode === "REMOTE" && (
+          <p className="font-mono text-muted text-[11px] uppercase tracking-[0.1em]">
+            Remote mode: your location is recorded at clock-in.
+          </p>
+        )}
 
         {!hasClockedIn && (
           <button

@@ -40,6 +40,15 @@ export function statusForClockIn(clockIn: Date, lateThreshold: string): "ON_TIME
   return minutesSinceMidnight >= parseHHMM(lateThreshold) ? "LATE" : "ON_TIME";
 }
 
+/** Pure comparison powering resolveDeviceStatus below — same for every staff member
+ * regardless of work mode, so a device binding mismatch is flagged identically for
+ * office and remote staff. */
+export function compareDeviceBinding(boundDeviceId: string | null, incomingDeviceId: string | null): DeviceStatus {
+  if (!incomingDeviceId) return DeviceStatus.MATCHED;
+  if (!boundDeviceId) return DeviceStatus.UNVERIFIED;
+  return boundDeviceId === incomingDeviceId ? DeviceStatus.MATCHED : DeviceStatus.MISMATCH;
+}
+
 /**
  * Binds/compares the device ID a check-in came from against what's on file for the staff
  * member. Never blocks the check-in itself — a mismatch is only flagged for admin review.
@@ -57,17 +66,14 @@ export async function resolveDeviceStatus(
     select: { boundDeviceId: true },
   });
 
-  if (!staff?.boundDeviceId) {
+  const status = compareDeviceBinding(staff?.boundDeviceId ?? null, deviceId);
+
+  if (status === DeviceStatus.UNVERIFIED) {
     await prisma.staff.update({
       where: { id: staffId },
       data: { boundDeviceId: deviceId, deviceBoundAt: new Date() },
     });
-    return { deviceId, deviceStatus: DeviceStatus.UNVERIFIED };
   }
 
-  if (staff.boundDeviceId === deviceId) {
-    return { deviceId, deviceStatus: DeviceStatus.MATCHED };
-  }
-
-  return { deviceId, deviceStatus: DeviceStatus.MISMATCH };
+  return { deviceId, deviceStatus: status };
 }

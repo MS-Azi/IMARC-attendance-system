@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "@/app/_components/Modal";
 import { useToast } from "@/app/_components/ToastProvider";
 import { fmtTime } from "@/lib/worklog/format";
+import RemoteBadge from "@/app/_components/RemoteBadge";
+import LocationLink from "@/app/_components/LocationLink";
 
 type Slot = {
   id: string;
@@ -20,7 +22,10 @@ type Row = {
   staffId: string;
   staffName: string;
   department: string | null;
+  workMode: "OFFICE" | "REMOTE";
   clockIn: string | null;
+  clockInLat: number | null;
+  clockInLng: number | null;
   clockInStatus: string | null;
   clockInExcused: boolean;
   attendanceId: string | null;
@@ -234,12 +239,13 @@ export default function ReviewBoardClient() {
                     {label}
                   </th>
                 ))}
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Location</th>
               </tr>
             </thead>
             <tbody>
               {!loading && visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={2 + slotLabels.length} className="px-3 py-8 md:px-5 text-center text-muted">
+                  <td colSpan={3 + slotLabels.length} className="px-3 py-8 md:px-5 text-center text-muted">
                     {board?.notConfigured
                       ? "Work log is not running — see above."
                       : board
@@ -250,7 +256,10 @@ export default function ReviewBoardClient() {
               )}
               {visibleRows.map((row) => (
                 <tr key={row.staffId} className="border-b border-border last:border-0">
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">{row.staffName}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    {row.staffName}
+                    <RemoteBadge workMode={row.workMode} />
+                  </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">
                     <button
                       onClick={() => {
@@ -283,6 +292,9 @@ export default function ReviewBoardClient() {
                       </td>
                     );
                   })}
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    {row.workMode === "REMOTE" && <LocationLink lat={row.clockInLat} lng={row.clockInLng} />}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -16,6 +16,7 @@ type Staff = {
   department: string | null;
   dateJoined: string;
   active: boolean;
+  workMode: "OFFICE" | "REMOTE";
 };
 
 type Compensation = { id: string; monthlySalaryKobo: number; grade: string | null; effectiveFrom: string };
@@ -125,6 +126,16 @@ export default function StaffPage() {
     load();
   }
 
+  async function setWorkMode(s: Staff, workMode: "OFFICE" | "REMOTE") {
+    await fetch(`/api/staff/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workMode }),
+    });
+    toast(`${s.fullName} set to ${workMode === "REMOTE" ? "Remote" : "Office"}.`);
+    load();
+  }
+
   return (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-7">
@@ -173,6 +184,7 @@ export default function StaffPage() {
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Position</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Department</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Login ID</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Work Mode</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Status</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>
                 {WORKLOG_ENABLED && <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>}
@@ -185,6 +197,16 @@ export default function StaffPage() {
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{s.position}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{s.department || "—"}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-muted">{s.loginId}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    <select
+                      value={s.workMode}
+                      onChange={(e) => setWorkMode(s, e.target.value as "OFFICE" | "REMOTE")}
+                      className="focus-ring rounded-md bg-surface2 border border-border px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em]"
+                    >
+                      <option value="OFFICE">Office</option>
+                      <option value="REMOTE">Remote</option>
+                    </select>
+                  </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3">
                     <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${s.active ? "text-good" : "text-bad"}`}>{s.active ? "Active" : "Inactive"}</span>
                   </td>

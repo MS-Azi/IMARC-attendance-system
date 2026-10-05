@@ -27,6 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     staffName: r.staff.fullName,
     position: r.staff.position,
     department: r.staff.department,
+    workMode: r.staff.workMode,
     date: r.date.toISOString().slice(0, 10),
     clockIn: r.clockIn ? new Date(r.clockIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-",
     clockOut: r.clockOut ? new Date(r.clockOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-",

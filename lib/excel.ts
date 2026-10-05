@@ -4,6 +4,7 @@ export type AttendanceRow = {
   staffName: string;
   position: string;
   department: string | null;
+  workMode?: "OFFICE" | "REMOTE";
   date: string;
   clockIn: string;
   clockOut: string;
@@ -24,6 +25,7 @@ export async function buildAttendanceWorkbook(rows: AttendanceRow[], title: stri
     { header: "Staff Name", key: "staffName", width: 26 },
     { header: "Position", key: "position", width: 20 },
     { header: "Department", key: "department", width: 18 },
+    { header: "Work Mode", key: "workMode", width: 12 },
     { header: "Date", key: "date", width: 14 },
     { header: "Clock In", key: "clockIn", width: 16 },
     { header: "Clock Out", key: "clockOut", width: 16 },
@@ -42,6 +44,7 @@ export async function buildAttendanceWorkbook(rows: AttendanceRow[], title: stri
       staffName: r.staffName,
       position: r.position,
       department: r.department,
+      workMode: r.workMode === "REMOTE" ? "Remote" : "Office",
       date: r.date,
       clockIn: r.inFlagged ? `⚠ ${r.clockIn}` : r.clockIn,
       clockOut: r.outFlagged ? `⚠ ${r.clockOut}` : r.clockOut,

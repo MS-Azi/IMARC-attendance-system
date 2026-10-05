@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import DeviceFlagTime from "@/app/_components/DeviceFlagTime";
+import RemoteBadge from "@/app/_components/RemoteBadge";
+import LocationLink from "@/app/_components/LocationLink";
 
 type Rec = {
   id: string;
   date: string;
   clockIn: string | null;
   clockOut: string | null;
+  clockInLat: number | null;
+  clockInLng: number | null;
   status: string;
   overridden: boolean;
   deviceStatus: string;
   clockOutDeviceStatus: string | null;
-  staff: { fullName: string; department: string | null };
+  staff: { fullName: string; department: string | null; workMode: "OFFICE" | "REMOTE" };
 };
 
 export default function LogPage() {
@@ -20,14 +24,16 @@ export default function LogPage() {
   const [from, setFrom] = useState(firstOfMonth());
   const [to, setTo] = useState(todayStr());
   const [status, setStatus] = useState("");
+  const [workMode, setWorkMode] = useState("");
 
   useEffect(() => {
     load();
-  }, [from, to, status]);
+  }, [from, to, status, workMode]);
 
   async function load() {
     const params = new URLSearchParams({ from, to });
     if (status) params.set("status", status);
+    if (workMode) params.set("workMode", workMode);
     const res = await fetch(`/api/attendance?${params}`);
     const data = await res.json();
     setRecords(data.records || []);
@@ -35,6 +41,7 @@ export default function LogPage() {
 
   function exportUrl() {
     const params = new URLSearchParams({ from, to });
+    if (workMode) params.set("workMode", workMode);
     return `/api/export?${params}`;
   }
 
@@ -71,6 +78,14 @@ export default function LogPage() {
             <option value="ANOMALY">Anomaly</option>
           </select>
         </div>
+        <div>
+          <label className="block font-mono text-[11px] uppercase tracking-[0.13em] text-muted mb-1.5">Work Mode</label>
+          <select value={workMode} onChange={(e) => setWorkMode(e.target.value)} className="focus-ring rounded-md bg-surface2 border border-border px-3 py-2 text-sm">
+            <option value="">All</option>
+            <option value="OFFICE">Office</option>
+            <option value="REMOTE">Remote</option>
+          </select>
+        </div>
       </div>
 
       <div className="relative">
@@ -83,13 +98,17 @@ export default function LogPage() {
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock In</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock Out</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Status</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Location</th>
               </tr>
             </thead>
             <tbody>
               {records.map((r) => (
                 <tr key={r.id} className="border-b border-border last:border-0">
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">{new Date(r.date).toLocaleDateString()}</td>
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    {r.staff.fullName}
+                    <RemoteBadge workMode={r.staff.workMode} />
+                  </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">
                     <DeviceFlagTime time={r.clockIn} flagged={r.deviceStatus === "MISMATCH"} />
                   </td>
@@ -100,10 +119,13 @@ export default function LogPage() {
                     <StatusBadge status={r.status} />
                     {r.overridden && <span className="font-mono text-muted text-[10px] uppercase tracking-[0.1em] ml-2">(edited)</span>}
                   </td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    {r.staff.workMode === "REMOTE" && <LocationLink lat={r.clockInLat} lng={r.clockInLng} />}
+                  </td>
                 </tr>
               ))}
               {records.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-8 md:px-5 text-center text-muted">No records in this range.</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 md:px-5 text-center text-muted">No records in this range.</td></tr>
               )}
             </tbody>
           </table>

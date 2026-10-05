@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { isWithinRadius } from "@/lib/geo";
+import { resolveClockLocation } from "@/lib/clockGuard";
 import { getSettings, dayKey, statusForClockIn, resolveDeviceStatus } from "@/lib/attendance";
 
 export async function POST(req: NextRequest) {
@@ -10,22 +10,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sign in as a staff member first." }, { status: 401 });
   }
 
-  const { action, lat, lng, deviceId } = await req.json();
-  if (typeof lat !== "number" || typeof lng !== "number") {
-    return NextResponse.json(
-      { error: "Location was not captured. Enable location access and try again." },
-      { status: 400 }
-    );
+  const { action, lat, lng, accuracy, deviceId } = await req.json();
+  const staff = await prisma.staff.findUnique({ where: { id: session.sub }, select: { workMode: true } });
+  if (!staff) {
+    return NextResponse.json({ error: "Staff record not found." }, { status: 404 });
   }
 
   const settings = await getSettings();
-  const within = isWithinRadius(lat, lng, settings.officeLat, settings.officeLng, settings.radiusMeters);
-  if (!within) {
-    return NextResponse.json(
-      { error: "You are outside the approved office location, so this attempt was not recorded." },
-      { status: 403 }
-    );
+  const location = resolveClockLocation({
+    workMode: staff.workMode,
+    lat: typeof lat === "number" ? lat : null,
+    lng: typeof lng === "number" ? lng : null,
+    officeLat: settings.officeLat,
+    officeLng: settings.officeLng,
+    radiusMeters: settings.radiusMeters,
+  });
+  if (!location.allowed) {
+    return NextResponse.json({ error: location.error }, { status: location.status });
   }
+  const recordedLat = location.locationShared ? lat : null;
+  const recordedLng = location.locationShared ? lng : null;
+  const recordedAccuracy = location.locationShared && typeof accuracy === "number" ? accuracy : null;
 
   const today = dayKey();
   const now = new Date();
@@ -45,16 +50,20 @@ export async function POST(req: NextRequest) {
         staffId: session.sub,
         date: today,
         clockIn: now,
-        clockInLat: lat,
-        clockInLng: lng,
+        clockInLat: recordedLat,
+        clockInLng: recordedLng,
+        clockInAccuracy: recordedAccuracy,
+        locationShared: location.locationShared,
         status,
         deviceId: device.deviceId,
         deviceStatus: device.deviceStatus,
       },
       update: {
         clockIn: now,
-        clockInLat: lat,
-        clockInLng: lng,
+        clockInLat: recordedLat,
+        clockInLng: recordedLng,
+        clockInAccuracy: recordedAccuracy,
+        locationShared: location.locationShared,
         status,
         deviceId: device.deviceId,
         deviceStatus: device.deviceStatus,
@@ -78,8 +87,10 @@ export async function POST(req: NextRequest) {
       where: { staffId_date: { staffId: session.sub, date: today } },
       data: {
         clockOut: now,
-        clockOutLat: lat,
-        clockOutLng: lng,
+        clockOutLat: recordedLat,
+        clockOutLng: recordedLng,
+        clockOutAccuracy: recordedAccuracy,
+        locationShared: location.locationShared,
         clockOutDeviceId: device.deviceId,
         clockOutDeviceStatus: device.deviceStatus,
       },
@@ -96,8 +107,9 @@ export async function GET() {
     return NextResponse.json({ error: "Sign in as a staff member first." }, { status: 401 });
   }
   const today = dayKey();
-  const record = await prisma.attendance.findUnique({
-    where: { staffId_date: { staffId: session.sub, date: today } },
-  });
-  return NextResponse.json({ record });
+  const [record, staff] = await Promise.all([
+    prisma.attendance.findUnique({ where: { staffId_date: { staffId: session.sub, date: today } } }),
+    prisma.staff.findUnique({ where: { id: session.sub }, select: { workMode: true } }),
+  ]);
+  return NextResponse.json({ record, workMode: staff?.workMode ?? "OFFICE" });
 }

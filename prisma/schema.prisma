@@ -22,6 +22,11 @@ model Admin {
   finalizedPayrollMonths PayrollMonth[]
 }
 
+enum WorkMode {
+  OFFICE
+  REMOTE
+}
+
 model Staff {
   id            String    @id @default(cuid())
   fullName      String
@@ -35,6 +40,7 @@ model Staff {
   createdAt     DateTime  @default(now())
   boundDeviceId String?   // device ID this staff member's check-ins are bound to
   deviceBoundAt DateTime? // when boundDeviceId was last (re)bound
+  workMode      WorkMode  @default(OFFICE)
   attendances   Attendance[]
 
   slotRecords          SlotRecord[]
@@ -53,9 +59,15 @@ model Attendance {
   clockIn      DateTime?
   clockInLat   Float?
   clockInLng   Float?
+  clockInAccuracy  Float?
   clockOut     DateTime?
   clockOutLat  Float?
   clockOutLng  Float?
+  clockOutAccuracy Float?
+  // False only when a REMOTE clock-in/out had no GPS available (denied/unavailable)
+  // and was still allowed through. Defaults true so every existing row keeps its
+  // current meaning (location was always required and present before this field).
+  locationShared Boolean @default(true)
   status       String   // ON_TIME | LATE | ABSENT | ANOMALY
   note         String?  // set when admin manually overrides an entry
   overridden   Boolean  @default(false)

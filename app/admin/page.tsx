@@ -4,15 +4,19 @@ import { useEffect, useState } from "react";
 import CornerBrackets from "@/app/_components/CornerBrackets";
 import { useTilt } from "@/app/_components/useTilt";
 import DeviceFlagTime from "@/app/_components/DeviceFlagTime";
+import RemoteBadge from "@/app/_components/RemoteBadge";
+import LocationLink from "@/app/_components/LocationLink";
 
 type Rec = {
   id: string;
   clockIn: string | null;
   clockOut: string | null;
+  clockInLat: number | null;
+  clockInLng: number | null;
   status: string;
   deviceStatus: string;
   clockOutDeviceStatus: string | null;
-  staff: { fullName: string; department: string | null };
+  staff: { fullName: string; department: string | null; workMode: "OFFICE" | "REMOTE" };
 };
 
 const BACKUP_REMINDER_DAYS = 30;
@@ -82,15 +86,19 @@ export default function AdminLivePage() {
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock In</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock Out</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Status</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Location</th>
               </tr>
             </thead>
             <tbody>
               {!loading && records.length === 0 && (
-                <tr><td colSpan={5} className="px-3 py-8 md:px-5 text-center text-muted">No attendance recorded yet today.</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 md:px-5 text-center text-muted">No attendance recorded yet today.</td></tr>
               )}
               {records.map((r) => (
                 <tr key={r.id} className="border-b border-border last:border-0">
-                  <td className="px-3 py-2.5 md:px-5 md:py-3">{r.staff.fullName}</td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    {r.staff.fullName}
+                    <RemoteBadge workMode={r.staff.workMode} />
+                  </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 text-muted">{r.staff.department || "—"}</td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3 font-mono tabular-nums">
                     <DeviceFlagTime time={r.clockIn} flagged={r.deviceStatus === "MISMATCH"} />
@@ -99,6 +107,9 @@ export default function AdminLivePage() {
                     <DeviceFlagTime time={r.clockOut} flagged={r.clockOutDeviceStatus === "MISMATCH"} />
                   </td>
                   <td className="px-3 py-2.5 md:px-5 md:py-3"><StatusBadge status={r.status} /></td>
+                  <td className="px-3 py-2.5 md:px-5 md:py-3">
+                    {r.staff.workMode === "REMOTE" && <LocationLink lat={r.clockInLat} lng={r.clockInLng} />}
+                  </td>
                 </tr>
               ))}
             </tbody>

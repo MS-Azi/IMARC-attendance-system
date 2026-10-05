@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const workMode = searchParams.get("workMode");
 
   const where: any = {};
   if (from || to) {
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
     if (from) where.date.gte = new Date(from);
     if (to) where.date.lte = new Date(to);
   }
+  if (workMode === "OFFICE" || workMode === "REMOTE") where.staff = { workMode };
 
   const records = await prisma.attendance.findMany({
     where,
@@ -28,6 +30,7 @@ export async function GET(req: NextRequest) {
     staffName: r.staff.fullName,
     position: r.staff.position,
     department: r.staff.department,
+    workMode: r.staff.workMode,
     date: r.date.toISOString().slice(0, 10),
     clockIn: r.clockIn ? new Date(r.clockIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-",
     clockOut: r.clockOut ? new Date(r.clockOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-",
