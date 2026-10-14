@@ -1,7 +1,7 @@
 import { prisma } from "./db";
-import { buildMonthlySummary, MonthlySummary } from "./report";
+import { MonthlySummary } from "./report";
 import { isWorklogEnabled } from "./worklog/flags";
-import { lagosMidnightUTC, lagosWeekday } from "./worklog/lagos";
+import { lagosMidnightUTC, lagosWeekday, lagosDateStr } from "./worklog/lagos";
 import { getRuleSetAt } from "./worklog/rules";
 import { RuleSetConfig } from "./worklog/config";
 import { categorizeOffences } from "./worklog/deductions";
@@ -24,7 +24,7 @@ export type SlotCounts = {
   falseCount: number;
   excused: number;
   pending: number; // window not yet marked by the cron — excluded from total
-  compliancePct: number | null; // onTime / total
+  compliancePct: number | null; // onTime / (total - excused)
 };
 
 export type StaffWorklog = {
@@ -66,11 +66,18 @@ export type MonthWorklog = {
   rows: WorkUpdateRow[];
 };
 
+/** Same shape as the stored monthly summary, but attendance % only counts days each
+ * person was actually expected in (see buildReportAttendance). */
+export type ReportAttendance = Omit<MonthlySummary, "perStaff" | "overallAttendancePct"> & {
+  overallAttendancePct: number | null;
+  perStaff: (Omit<MonthlySummary["perStaff"][number], "attendancePct"> & { expectedDays: number; attendancePct: number | null })[];
+};
+
 export type FullReport = {
   monthStr: string;
   monthLabel: string;
   generatedAt: Date;
-  attendance: MonthlySummary;
+  attendance: ReportAttendance;
   worklog: MonthWorklog | null; // null when the worklog module is off
   previous: MonthWorklog | null;
   summary: string[];
@@ -104,7 +111,8 @@ function classify(r: { outcome: string; reviewStatus: string }): keyof Omit<Slot
 
 function finishCounts(c: SlotCounts) {
   c.total = c.onTime + c.late + c.missed + c.falseCount + c.excused;
-  c.compliancePct = c.total ? Math.round((c.onTime / c.total) * 100) : null;
+  const counted = c.total - c.excused; // excused slots don't count for or against compliance
+  c.compliancePct = counted ? Math.round((c.onTime / counted) * 100) : null;
 }
 
 function topKey(counts: Map<string, number>): string | null {
@@ -150,9 +158,9 @@ export async function buildMonthWorklog(monthStr: string): Promise<MonthWorklog>
   const totals = emptyCounts();
   const missedBySlot = new Map<string, number>();
   const missedByDay = new Map<string, number>();
-  const staff: StaffWorklog[] = [];
-
-  for (const s of staffList) {
+  // Per-staff work runs in parallel (each is a chain of DB round trips). The counting
+  // above the first await runs synchronously in list order, so shared totals are safe.
+  const staff: StaffWorklog[] = await Promise.all(staffList.map(async (s): Promise<StaffWorklog> => {
     const mine = records.filter((r) => r.staffId === s.id);
     const counts = emptyCounts();
     const slotMiss = new Map<string, number>();
@@ -196,7 +204,7 @@ export async function buildMonthWorklog(monthStr: string): Promise<MonthWorklog>
     const lateClockIns = events.filter((e) => e.type === "LATE_CLOCK_IN").length;
     if (counts.total > 0 && counts.late + counts.missed + counts.falseCount === 0 && lateClockIns === 0) flags.push("Clean record");
 
-    staff.push({
+    return {
       staffId: s.id,
       name: s.fullName,
       department: s.department,
@@ -208,8 +216,8 @@ export async function buildMonthWorklog(monthStr: string): Promise<MonthWorklog>
       offences: categorized.length,
       deduction,
       flags,
-    });
-  }
+    };
+  }));
   finishCounts(totals);
 
   return {
@@ -235,6 +243,105 @@ export async function buildMonthWorklog(monthStr: string): Promise<MonthWorklog>
   };
 }
 
+const DEFAULT_WORKING_WEEKDAYS = [1, 2, 3, 4, 5];
+
+/**
+ * Attendance for the report. A day counts as expected for a staff member only if it
+ * has already happened (today counts once they've clocked in), is a working weekday
+ * under the rule set in force that day (Mon-Fri if none), isn't a non-working day,
+ * is on/after their start date and the worklog module start date, and isn't excused
+ * leave (every work-update slot that day excused). Absent = expected days without a
+ * clock-in. The stored summary used by "Generate report" is unchanged.
+ */
+export async function buildReportAttendance(year: number, month: number): Promise<ReportAttendance> {
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 1));
+  const lagosStart = lagosMidnightUTC(year, month, 1);
+  const lagosEnd = month === 12 ? lagosMidnightUTC(year + 1, 1, 1) : lagosMidnightUTC(year, month + 1, 1);
+  const todayStr = lagosDateStr(new Date());
+  const worklogOn = isWorklogEnabled();
+
+  const [staff, records, nonWorking, settings, slots, ruleSets] = await Promise.all([
+    prisma.staff.findMany({ where: { active: true }, select: { id: true, fullName: true, department: true, dateJoined: true }, orderBy: { fullName: "asc" } }),
+    prisma.attendance.findMany({ where: { date: { gte: start, lt: end } }, select: { staffId: true, date: true, status: true } }),
+    prisma.nonWorkingDay.findMany({ where: { date: { gte: lagosStart, lt: lagosEnd } }, select: { date: true } }),
+    worklogOn ? prisma.worklogSettings.findUnique({ where: { id: 1 }, select: { startDate: true } }) : null,
+    prisma.slotRecord.findMany({ where: { date: { gte: lagosStart, lt: lagosEnd } }, select: { staffId: true, date: true, reviewStatus: true } }),
+    // Loaded once and resolved per day in memory — same selection as getRuleSetAt().
+    worklogOn
+      ? prisma.worklogRuleSet.findMany({
+          where: { effectiveFrom: { lt: lagosEnd }, supersededAt: null },
+          orderBy: [{ effectiveFrom: "desc" }, { version: "desc" }],
+          select: { effectiveFrom: true, config: true },
+        })
+      : [],
+  ]);
+  const nonWorkingSet = new Set(nonWorking.map((d) => lagosDateStr(d.date)));
+  const moduleStart = worklogOn && settings?.startDate ? lagosDateStr(settings.startDate) : null;
+
+  // Excused leave: a staff/day where every slot row is EXCUSED.
+  const slotDays = new Map<string, { total: number; excused: number }>();
+  for (const r of slots) {
+    const k = `${r.staffId}|${lagosDateStr(r.date)}`;
+    const e = slotDays.get(k) ?? { total: 0, excused: 0 };
+    e.total++;
+    if (r.reviewStatus === "EXCUSED") e.excused++;
+    slotDays.set(k, e);
+  }
+
+  // Calendar days that have happened, each with whether it's a working day.
+  const days: { str: string; working: boolean }[] = [];
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const str = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (str > todayStr) break;
+    const weekday = new Date(Date.UTC(year, month - 1, d)).getUTCDay();
+    const dayKey = lagosMidnightUTC(year, month, d);
+    const rs = ruleSets.find((r) => r.effectiveFrom.getTime() <= dayKey.getTime());
+    const weekdays = (rs?.config as unknown as RuleSetConfig | undefined)?.workingWeekdays ?? DEFAULT_WORKING_WEEKDAYS;
+    days.push({ str, working: weekdays.includes(weekday) && !nonWorkingSet.has(str) && (!moduleStart || str >= moduleStart) });
+  }
+
+  const perStaff = staff.map((s) => {
+    const mine = records.filter((r) => r.staffId === s.id);
+    // Attendance.date is midnight UTC of the calendar day (see dayKey()).
+    const byDay = new Map(mine.map((r) => [r.date.toISOString().slice(0, 10), r.status]));
+    const joined = lagosDateStr(s.dateJoined);
+    let expectedDays = 0;
+    let presentDays = 0;
+    for (const d of days) {
+      if (!d.working || d.str < joined) continue;
+      const sd = slotDays.get(`${s.id}|${d.str}`);
+      if (sd && sd.total > 0 && sd.excused === sd.total) continue; // excused leave
+      const present = byDay.has(d.str) && byDay.get(d.str) !== "ABSENT";
+      if (d.str === todayStr && !present) continue; // today only counts once they've clocked in
+      expectedDays++;
+      if (present) presentDays++;
+    }
+    return {
+      name: s.fullName,
+      department: s.department,
+      onTime: mine.filter((r) => r.status === "ON_TIME").length,
+      late: mine.filter((r) => r.status === "LATE").length,
+      absent: expectedDays - presentDays,
+      anomalies: mine.filter((r) => r.status === "ANOMALY").length,
+      expectedDays,
+      attendancePct: expectedDays ? Math.round((presentDays / expectedDays) * 100) : null,
+    };
+  });
+
+  const counted = perStaff.filter((p) => p.attendancePct !== null);
+  return {
+    periodLabel: `${year}-${String(month).padStart(2, "0")}`,
+    totalStaff: staff.length,
+    overallAttendancePct: counted.length ? Math.round(counted.reduce((a, p) => a + (p.attendancePct ?? 0), 0) / counted.length) : null,
+    totalLate: perStaff.reduce((a, p) => a + p.late, 0),
+    totalAbsent: perStaff.reduce((a, p) => a + p.absent, 0),
+    totalAnomalies: perStaff.reduce((a, p) => a + p.anomalies, 0),
+    perStaff,
+  };
+}
+
 function naira(kobo: number) {
   return `₦${(kobo / 100).toLocaleString("en-NG")}`;
 }
@@ -242,7 +349,9 @@ function naira(kobo: number) {
 function plainSummary(r: Omit<FullReport, "summary">): string[] {
   const a = r.attendance;
   const out = [
-    `${r.monthLabel}: ${a.totalStaff} active staff, average attendance ${a.overallAttendancePct}%, with ${a.totalLate} late clock-ins and ${a.totalAbsent} absences.`,
+    a.overallAttendancePct === null
+      ? `${r.monthLabel}: ${a.totalStaff} active staff; no working days counted towards attendance yet.`
+      : `${r.monthLabel}: ${a.totalStaff} active staff, average attendance ${a.overallAttendancePct}% of expected working days, with ${a.totalLate} late clock-ins and ${a.totalAbsent} absences.`,
   ];
   const w = r.worklog;
   if (!w) return out;
@@ -251,7 +360,7 @@ function plainSummary(r: Omit<FullReport, "summary">): string[] {
     return out;
   }
   out.push(
-    `Work updates: ${w.totals.compliancePct}% of ${w.totals.total} slots were submitted on time (${w.totals.late} late, ${w.totals.missed} missed, ${w.totals.falseCount} false, ${w.totals.excused} excused).`
+    `Work updates: ${w.totals.compliancePct}% of ${w.totals.total - w.totals.excused} non-excused slots were submitted on time (${w.totals.late} late, ${w.totals.missed} missed, ${w.totals.falseCount} false, ${w.totals.excused} excused).`
   );
   const prevPct = r.previous?.totals.compliancePct;
   if (prevPct != null && w.totals.compliancePct != null) {
@@ -277,10 +386,12 @@ function plainSummary(r: Omit<FullReport, "summary">): string[] {
 
 export async function buildFullReport(monthStr: string): Promise<FullReport> {
   const [year, month] = monthStr.split("-").map(Number);
-  const attendance = await buildMonthlySummary(year, month);
   const worklogOn = isWorklogEnabled();
-  const worklog = worklogOn ? await buildMonthWorklog(monthStr) : null;
-  const previous = worklogOn ? await buildMonthWorklog(prevMonthStr(monthStr)) : null;
+  const [attendance, worklog, previous] = await Promise.all([
+    buildReportAttendance(year, month),
+    worklogOn ? buildMonthWorklog(monthStr) : null,
+    worklogOn ? buildMonthWorklog(prevMonthStr(monthStr)) : null,
+  ]);
   const base = { monthStr, monthLabel: monthLabel(monthStr), generatedAt: new Date(), attendance, worklog, previous };
   return { ...base, summary: plainSummary(base) };
 }

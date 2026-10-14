@@ -31,8 +31,8 @@ type Grid = { headers: string[]; rows: (string | number)[][] };
 
 function attendanceGrid(r: FullReport): Grid {
   return {
-    headers: ["Staff", "Department", "On time", "Late", "Absent", "Anomalies", "Attendance"],
-    rows: r.attendance.perStaff.map((p) => [p.name, p.department ?? "—", p.onTime, p.late, p.absent, p.anomalies, `${p.attendancePct}%`]),
+    headers: ["Staff", "Department", "Expected days", "On time", "Late", "Absent", "Anomalies", "Attendance"],
+    rows: r.attendance.perStaff.map((p) => [p.name, p.department ?? "—", p.expectedDays, p.onTime, p.late, p.absent, p.anomalies, pct(p.attendancePct)]),
   };
 }
 
@@ -96,6 +96,9 @@ function updatesGrid(w: MonthWorklog): Grid {
   };
 }
 
+const ATTENDANCE_NOTE =
+  "Attendance % = days clocked in ÷ expected working days. Expected days have already happened, are on or after the staff member's start date and the work-log start date, and exclude non-working days and excused leave.";
+
 function modeNote(w: MonthWorklog) {
   return w.deductionsEnabled
     ? `Deductions were active this month (cap ${w.capPercent}% of salary).`
@@ -137,10 +140,10 @@ export async function buildFullReportXlsx(r: FullReport) {
   r.summary.forEach((line) => summary.addRow([line]));
   summary.getColumn(1).width = 120;
 
-  addGridSheet(wb, "Attendance", attendanceGrid(r));
+  addGridSheet(wb, "Attendance", attendanceGrid(r), ATTENDANCE_NOTE);
   const w = r.worklog;
   if (w) {
-    addGridSheet(wb, "Work Log", worklogGrid(w), "Compliance = on-time submissions ÷ total slots (slots not yet marked by the system are excluded).");
+    addGridSheet(wb, "Work Log", worklogGrid(w), "Compliance = on-time submissions ÷ non-excused slots (excused slots, and slots not yet marked by the system, are left out).");
     addGridSheet(wb, "Warnings & Deductions", deductionsGrid(w), modeNote(w));
     addGridSheet(wb, "Month on Month", momGrid(w, r.previous));
     addGridSheet(wb, "Flags", flagsGrid(w));
@@ -176,12 +179,13 @@ export async function buildFullReportDocx(r: FullReport) {
     h1("Summary"),
     ...r.summary.map((line) => new Paragraph({ bullet: { level: 0 }, spacing: { after: 60 }, children: [new TextRun(line)] })),
     h1("Attendance"),
+    para(ATTENDANCE_NOTE, { italic: true }),
     docTable(attendanceGrid(r)),
   ];
   if (w) {
     children.push(
       h1("Work Updates by Staff"),
-      para("Compliance = on-time submissions ÷ total slots (slots not yet marked by the system are excluded).", { italic: true }),
+      para("Compliance = on-time submissions ÷ non-excused slots (excused slots, and slots not yet marked by the system, are left out).", { italic: true }),
       docTable(worklogGrid(w)),
       h1("Patterns"),
       para(`Most-missed slot: ${w.mostMissedSlot ?? "none"}.`),
