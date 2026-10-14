@@ -35,8 +35,18 @@ export async function POST(req: NextRequest) {
     const warnings = await runWarningNotices(now, deadline);
 
     const durationMs = Date.now() - startedAt;
-    console.log(`[cron/worklog] run finished in ${durationMs}ms`, { ...reminders, ...warnings });
-    return NextResponse.json({ ok: true, durationMs, ...reminders, ...warnings });
+    const { processed: remindersProcessed, truncated: remindersTruncated, ...reminderCounts } = reminders;
+    const { processed: warningsProcessed, truncated: warningsTruncated, ...warningCounts } = warnings;
+    const summary = {
+      ...reminderCounts,
+      warningsSent: warningCounts.sent,
+      staffTotal: reminders.staffTotal,
+      remindersProcessed,
+      warningsProcessed,
+      fullRun: !remindersTruncated && !warningsTruncated,
+    };
+    console.log(`[cron/worklog] run finished in ${durationMs}ms`, JSON.stringify(summary));
+    return NextResponse.json({ ok: true, durationMs, ...summary });
   } catch (err) {
     const durationMs = Date.now() - startedAt;
     console.error(`[cron/worklog] run failed after ${durationMs}ms`, err);

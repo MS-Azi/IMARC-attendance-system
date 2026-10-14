@@ -249,7 +249,8 @@ const DEFAULT_WORKING_WEEKDAYS = [1, 2, 3, 4, 5];
  * Attendance for the report. A day counts as expected for a staff member only if it
  * has already happened (today counts once they've clocked in), is a working weekday
  * under the rule set in force that day (Mon-Fri if none), isn't a non-working day,
- * is on/after their start date and the worklog module start date, and isn't excused
+ * is on/after their own start date (not the work-log start date: attendance tracking
+ * predates the work log), and isn't excused
  * leave (every work-update slot that day excused). Absent = expected days without a
  * clock-in. The stored summary used by "Generate report" is unchanged.
  */
@@ -261,11 +262,10 @@ export async function buildReportAttendance(year: number, month: number): Promis
   const todayStr = lagosDateStr(new Date());
   const worklogOn = isWorklogEnabled();
 
-  const [staff, records, nonWorking, settings, slots, ruleSets] = await Promise.all([
+  const [staff, records, nonWorking, slots, ruleSets] = await Promise.all([
     prisma.staff.findMany({ where: { active: true }, select: { id: true, fullName: true, department: true, dateJoined: true }, orderBy: { fullName: "asc" } }),
     prisma.attendance.findMany({ where: { date: { gte: start, lt: end } }, select: { staffId: true, date: true, status: true } }),
     prisma.nonWorkingDay.findMany({ where: { date: { gte: lagosStart, lt: lagosEnd } }, select: { date: true } }),
-    worklogOn ? prisma.worklogSettings.findUnique({ where: { id: 1 }, select: { startDate: true } }) : null,
     prisma.slotRecord.findMany({ where: { date: { gte: lagosStart, lt: lagosEnd } }, select: { staffId: true, date: true, reviewStatus: true } }),
     // Loaded once and resolved per day in memory — same selection as getRuleSetAt().
     worklogOn
@@ -277,7 +277,6 @@ export async function buildReportAttendance(year: number, month: number): Promis
       : [],
   ]);
   const nonWorkingSet = new Set(nonWorking.map((d) => lagosDateStr(d.date)));
-  const moduleStart = worklogOn && settings?.startDate ? lagosDateStr(settings.startDate) : null;
 
   // Excused leave: a staff/day where every slot row is EXCUSED.
   const slotDays = new Map<string, { total: number; excused: number }>();
@@ -299,7 +298,7 @@ export async function buildReportAttendance(year: number, month: number): Promis
     const dayKey = lagosMidnightUTC(year, month, d);
     const rs = ruleSets.find((r) => r.effectiveFrom.getTime() <= dayKey.getTime());
     const weekdays = (rs?.config as unknown as RuleSetConfig | undefined)?.workingWeekdays ?? DEFAULT_WORKING_WEEKDAYS;
-    days.push({ str, working: weekdays.includes(weekday) && !nonWorkingSet.has(str) && (!moduleStart || str >= moduleStart) });
+    days.push({ str, working: weekdays.includes(weekday) && !nonWorkingSet.has(str) });
   }
 
   const perStaff = staff.map((s) => {

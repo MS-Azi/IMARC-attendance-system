@@ -97,7 +97,7 @@ function updatesGrid(w: MonthWorklog): Grid {
 }
 
 const ATTENDANCE_NOTE =
-  "Attendance % = days clocked in ÷ expected working days. Expected days have already happened, are on or after the staff member's start date and the work-log start date, and exclude non-working days and excused leave.";
+  "Attendance % = days clocked in ÷ expected working days. Expected days have already happened, are on or after the staff member's own start date, and exclude non-working days and excused leave.";
 
 function modeNote(w: MonthWorklog) {
   return w.deductionsEnabled
