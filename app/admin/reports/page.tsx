@@ -98,6 +98,16 @@ export default function ReportsPage() {
         >
           {generating ? "Generating…" : "Generate report"}
         </button>
+        {month && (
+          <div className="flex items-center gap-4 py-2">
+            <a href={`/api/reports/full?month=${month}&format=docx`} className="focus-ring font-mono text-[11px] uppercase tracking-[0.1em] underline">
+              Full report .docx
+            </a>
+            <a href={`/api/reports/full?month=${month}&format=xlsx`} className="focus-ring font-mono text-[11px] uppercase tracking-[0.1em] underline">
+              Full report .xlsx
+            </a>
+          </div>
+        )}
         {genError && <p className="font-mono text-bad text-xs">{genError}</p>}
       </div>
 

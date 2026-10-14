@@ -7,7 +7,7 @@ import { calculatePayroll, PayrollOffenceEvent, PayrollBreakdown } from "./payro
 /** Gathers one staff member's confirmed, non-excused offences for a month, each
  * carrying the tier ladder that actually applied to it (its own rule-set version,
  * staff's grade at the time) — the DB-touching counterpart to the pure engine. */
-async function getPayrollOffenceEvents(staffId: string, monthStr: string, grade: string | null): Promise<PayrollOffenceEvent[]> {
+export async function getPayrollOffenceEvents(staffId: string, monthStr: string, grade: string | null): Promise<PayrollOffenceEvent[]> {
   const [year, month] = monthStr.split("-").map(Number);
   const start = lagosDateKey(new Date(Date.UTC(year, month - 1, 1)));
   const end = lagosDateKey(new Date(Date.UTC(year, month, 1)));
