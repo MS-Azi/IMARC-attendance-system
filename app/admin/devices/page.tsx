@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { summarizeDevice, type DeviceSummary } from "@/lib/deviceDescription";
 
 type DeviceStatus = "MATCHED" | "UNVERIFIED" | "MISMATCH";
 
@@ -13,6 +14,9 @@ type Rec = {
   deviceStatus: DeviceStatus;
   clockOutDeviceId: string | null;
   clockOutDeviceStatus: DeviceStatus | null;
+  clockInUserAgent: string | null;
+  clockOutUserAgent: string | null;
+  boundDeviceUserAgent: string | null;
   flaggedActions: ("IN" | "OUT")[];
   staff: { fullName: string; department: string | null };
 };
@@ -55,7 +59,7 @@ export default function DevicesPage() {
 
       <div className="relative">
         <div className="glass rounded-card overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm min-w-[880px]">
             <thead>
               <tr className="text-left border-b border-border">
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Date</th>
@@ -63,12 +67,13 @@ export default function DevicesPage() {
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock In</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Clock Out</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Flagged</th>
+                <th className="px-3 py-2.5 md:px-5 md:py-3 font-mono text-[11px] font-normal uppercase tracking-[0.12em] text-muted">Device</th>
                 <th className="px-3 py-2.5 md:px-5 md:py-3 font-normal"></th>
               </tr>
             </thead>
             <tbody>
               {!loading && records.length === 0 && (
-                <tr><td colSpan={6} className="px-3 py-8 md:px-5 text-center text-muted">Nothing flagged for review.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 md:px-5 text-center text-muted">Nothing flagged for review.</td></tr>
               )}
               {records.map((r) => {
                 const bothFlaggedDifferently =
@@ -88,6 +93,9 @@ export default function DevicesPage() {
                           <DeviceBadge action="OUT" status={r.clockOutDeviceStatus} />
                         )}
                       </div>
+                    </td>
+                    <td className="px-3 py-2.5 md:px-5 md:py-3">
+                      <DeviceCompare record={r} />
                     </td>
                     <td className="px-3 py-2.5 md:px-5 md:py-3 text-right space-x-3 whitespace-nowrap">
                       {bothFlaggedDifferently ? (
@@ -142,6 +150,44 @@ function DeviceBadge({ action, status }: { action: "IN" | "OUT"; status: DeviceS
     <span className={`font-mono text-[11px] uppercase tracking-[0.1em] ${map[status] || "text-muted"}`}>
       {action}: {status}
     </span>
+  );
+}
+
+/** Flagged side(s) vs the bound device. Green/red only when both sides report a real
+ * hardware model; otherwise neutral with no verdict (reduced Android UA, iPhone, desktop). */
+function DeviceCompare({ record: r }: { record: Rec }) {
+  const bound = summarizeDevice(r.boundDeviceUserAgent);
+  const sides: { label: string; ua: string | null }[] = [];
+  if (r.flaggedActions.includes("IN")) sides.push({ label: "In", ua: r.clockInUserAgent });
+  if (r.flaggedActions.includes("OUT") && !(r.flaggedActions.includes("IN") && r.clockOutDeviceId === r.deviceId)) {
+    sides.push({ label: "Out", ua: r.clockOutUserAgent });
+  }
+  return (
+    <div className="flex flex-col gap-1 text-[12px] leading-snug">
+      {sides.map((side) => {
+        const d = summarizeDevice(side.ua);
+        const verdict = d?.model && bound?.model ? (d.model.toLowerCase() === bound.model.toLowerCase() ? "same" : "different") : null;
+        return (
+          <DeviceLine
+            key={side.label}
+            label={side.label}
+            device={d}
+            className={verdict === "same" ? "text-good" : verdict === "different" ? "text-bad" : ""}
+            suffix={verdict === "same" ? " — same model" : verdict === "different" ? " — different model" : ""}
+          />
+        );
+      })}
+      <DeviceLine label="Bound" device={bound} className="text-muted" suffix="" />
+    </div>
+  );
+}
+
+function DeviceLine({ label, device, className, suffix }: { label: string; device: DeviceSummary | null; className: string; suffix: string }) {
+  return (
+    <div className={className} title={device?.full}>
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted mr-1.5">{label}</span>
+      {device ? device.label + suffix : <span className="text-muted">not recorded yet</span>}
+    </div>
   );
 }
 

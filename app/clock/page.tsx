@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import CornerBrackets from "@/app/_components/CornerBrackets";
 import { useTilt } from "@/app/_components/useTilt";
-import { getDeviceId } from "@/lib/deviceId";
+import { getDeviceId, getDeviceHints } from "@/lib/deviceId";
 import TodaysUpdatesCard from "@/app/_components/worklog/TodaysUpdatesCard";
 import RulesAcknowledgementBanner from "@/app/_components/worklog/RulesAcknowledgementBanner";
 import PushSetupPrompt from "@/app/_components/worklog/PushSetupPrompt";
@@ -59,10 +59,11 @@ export default function ClockPage() {
     accuracy: number | null,
     locationError: LocationErrorType | null
   ) {
+    const deviceHints = await getDeviceHints();
     const res = await fetch("/api/clock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, lat, lng, accuracy, locationError, deviceId: getDeviceId() }),
+      body: JSON.stringify({ action, lat, lng, accuracy, locationError, deviceId: getDeviceId(), deviceHints }),
     });
     const data = await res.json();
     setBusy(false);

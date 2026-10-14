@@ -17,7 +17,7 @@ export async function GET() {
     where: {
       OR: [{ deviceStatus: { in: ["MISMATCH", "UNVERIFIED"] } }, { clockOutDeviceStatus: "MISMATCH" }],
     },
-    include: { staff: true },
+    include: { staff: { select: { fullName: true, department: true, boundDeviceId: true } } },
     orderBy: { date: "desc" },
   });
 
@@ -26,6 +26,32 @@ export async function GET() {
     if (r.deviceStatus === "UNVERIFIED") {
       unverifiedCounts.set(r.staffId, (unverifiedCounts.get(r.staffId) || 0) + 1);
     }
+  }
+
+  // Description of each flagged staff member's bound device, taken from the newest
+  // check-in/out made on it that recorded one (descriptions exist only from this release on).
+  const boundDescriptions = new Map<string, string | null>();
+  for (const r of flagged) {
+    const bound = r.staff.boundDeviceId;
+    if (boundDescriptions.has(r.staffId)) continue;
+    if (!bound) {
+      boundDescriptions.set(r.staffId, null);
+      continue;
+    }
+    const [inRec, outRec] = await Promise.all([
+      prisma.attendance.findFirst({
+        where: { staffId: r.staffId, deviceId: bound, clockInUserAgent: { not: null } },
+        orderBy: { clockIn: "desc" },
+        select: { clockIn: true, clockInUserAgent: true },
+      }),
+      prisma.attendance.findFirst({
+        where: { staffId: r.staffId, clockOutDeviceId: bound, clockOutUserAgent: { not: null } },
+        orderBy: { clockOut: "desc" },
+        select: { clockOut: true, clockOutUserAgent: true },
+      }),
+    ]);
+    const useOut = outRec && (!inRec || (outRec.clockOut?.getTime() ?? 0) > (inRec.clockIn?.getTime() ?? 0));
+    boundDescriptions.set(r.staffId, useOut ? outRec.clockOutUserAgent : inRec?.clockInUserAgent ?? null);
   }
 
   const records = flagged
@@ -38,7 +64,8 @@ export async function GET() {
       const flaggedActions: ("IN" | "OUT")[] = [];
       if (r.deviceStatus === "MISMATCH" || (unverifiedCounts.get(r.staffId) || 0) > 1) flaggedActions.push("IN");
       if (r.clockOutDeviceStatus === "MISMATCH") flaggedActions.push("OUT");
-      return { ...r, flaggedActions };
+      const { boundDeviceId: _bound, ...staff } = r.staff;
+      return { ...r, staff, flaggedActions, boundDeviceUserAgent: boundDescriptions.get(r.staffId) ?? null };
     });
 
   return NextResponse.json({ records });

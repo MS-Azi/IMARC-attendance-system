@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { resolveClockLocation } from "@/lib/clockGuard";
 import { getSettings, dayKey, statusForClockIn, resolveDeviceStatus } from "@/lib/attendance";
+import { buildDeviceDescription } from "@/lib/deviceDescription";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -10,7 +11,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sign in as a staff member first." }, { status: 401 });
   }
 
-  const { action, lat, lng, accuracy, locationError, deviceId } = await req.json();
+  const { action, lat, lng, accuracy, locationError, deviceId, deviceHints } = await req.json();
+  const deviceDescription = buildDeviceDescription(req.headers.get("user-agent"), deviceHints);
   const staff = await prisma.staff.findUnique({ where: { id: session.sub }, select: { workMode: true } });
   if (!staff) {
     return NextResponse.json({ error: "Staff record not found." }, { status: 404 });
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
         status,
         deviceId: device.deviceId,
         deviceStatus: device.deviceStatus,
+        clockInUserAgent: deviceDescription,
       },
       update: {
         clockIn: now,
@@ -72,6 +75,7 @@ export async function POST(req: NextRequest) {
         status,
         deviceId: device.deviceId,
         deviceStatus: device.deviceStatus,
+        clockInUserAgent: deviceDescription,
       },
     });
     return NextResponse.json({ ok: true, record });
@@ -98,6 +102,7 @@ export async function POST(req: NextRequest) {
         locationShared: location.locationShared,
         clockOutDeviceId: device.deviceId,
         clockOutDeviceStatus: device.deviceStatus,
+        clockOutUserAgent: deviceDescription,
       },
     });
     return NextResponse.json({ ok: true, record });

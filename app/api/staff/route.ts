@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession, hashPassword } from "@/lib/auth";
+import { ADMIN_STAFF_SELECT } from "@/lib/staffFields";
 
 async function requireAdmin() {
   const session = await getSession();
@@ -10,7 +11,7 @@ async function requireAdmin() {
 
 export async function GET() {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Admin only." }, { status: 401 });
-  const staff = await prisma.staff.findMany({ orderBy: { fullName: "asc" } });
+  const staff = await prisma.staff.findMany({ orderBy: { fullName: "asc" }, select: ADMIN_STAFF_SELECT });
   return NextResponse.json({ staff });
 }
 
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       department: department || undefined,
       dateJoined: dateJoined ? new Date(dateJoined) : new Date(),
     },
+    select: ADMIN_STAFF_SELECT,
   });
   return NextResponse.json({ staff });
 }

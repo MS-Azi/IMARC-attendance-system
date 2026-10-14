@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const records = await prisma.attendance.findMany({
     where,
-    include: { staff: true },
+    include: { staff: { select: { fullName: true, department: true, workMode: true } } },
     orderBy: { date: "desc" },
   });
   return NextResponse.json({ records });

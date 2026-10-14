@@ -77,6 +77,10 @@ model Attendance {
   deviceStatus         DeviceStatus  @default(MATCHED)
   clockOutDeviceId     String?
   clockOutDeviceStatus DeviceStatus?
+  // Browser/phone description captured at clock-in/out (User-Agent plus client hints
+  // where available). Display-only, for Device Review — never used for binding.
+  clockInUserAgent     String?
+  clockOutUserAgent    String?
 
   offenceReview AttendanceOffenceReview?
 

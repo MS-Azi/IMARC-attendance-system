@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession, hashPassword } from "@/lib/auth";
+import { ADMIN_STAFF_SELECT } from "@/lib/staffFields";
 import { writeAuditLog } from "@/lib/audit";
 
 async function requireAdmin() {
@@ -29,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.workMode = body.workMode;
   }
 
-  const staff = await prisma.staff.update({ where: { id: params.id }, data });
+  const staff = await prisma.staff.update({ where: { id: params.id }, data, select: ADMIN_STAFF_SELECT });
 
   if (before && before.workMode !== staff.workMode) {
     await writeAuditLog({
@@ -48,6 +49,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!(await requireAdmin())) return NextResponse.json({ error: "Admin only." }, { status: 401 });
-  const staff = await prisma.staff.update({ where: { id: params.id }, data: { active: false } });
+  const staff = await prisma.staff.update({ where: { id: params.id }, data: { active: false }, select: ADMIN_STAFF_SELECT });
   return NextResponse.json({ staff });
 }
